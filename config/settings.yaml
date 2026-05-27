@@ -1,0 +1,42 @@
+# ============================================================
+# 应用技术配置
+# ============================================================
+
+# 当前激活的角色（对应 config/personas/{id}.yaml）
+active_persona: "a001"
+
+# ---------- 模型选择（后端读取） ----------
+models:
+  non_realtime: "qwen3.5-omni-plus"
+  realtime: "qwen3.5-omni-plus-realtime"
+
+# ---------- 音色（后端读取，可被 persona 的 voice 字段覆盖） ----------
+voice: "Ethan"
+
+# ---------- 输出模态（后端读取） ----------
+output:
+  modalities: ["text", "audio"]   # ["text", "audio"] 或 ["text"]
+
+# ---------- 实时模式配置（后端读取，注入 session.update） ----------
+realtime:
+  vad_type: "semantic_vad"        # semantic_vad | server_vad
+  vad_threshold: 0.5
+  silence_duration_ms: 800
+  enable_search: true
+  input_audio_transcription: true
+  transcription_model: "qwen3-asr-flash-realtime"
+
+# ---------- 非实时模式配置（后端读取，注入 API 请求参数） ----------
+non_realtime:
+  enable_search: true
+
+# ---------- 屏幕监控（前端读取，决定采集行为） ----------
+# 前端根据这些值决定截屏频率和预处理参数
+# 后端有独立的硬编码兜底（API 限制不可突破），即使前端不遵守也不会崩
+screen_capture:
+  enabled: true             # 是否启用屏幕监控
+  interval_ms: 1000         # 前端截屏推送频率（毫秒）
+  max_resolution: "720p"    # 前端采集时的目标分辨率（降低可省带宽和 token）
+  format: "jpeg"            # 前端输出格式（Realtime 要求必须 JPEG）
+  max_size_kb: 190          # 前端压缩目标（后端兜底上限为 256KB base64）
+

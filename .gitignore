@@ -1,0 +1,31 @@
+# 环境变量（敏感信息）
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+
+# Node
+node_modules/
+dist/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 构建产物
+*.egg-info/
+build/
+out/
+
+# 文档原始参考文件（可选）
+# omni_realtime调用说明.md
+# omni_非实时调用说明.md
+# 和豆包的对话_0527.pdf

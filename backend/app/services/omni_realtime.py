@@ -13,11 +13,6 @@ import websockets
 class OmniRealtimeService:
     """沉浸模式 - 实时语音对话服务"""
 
-    # 心跳间隔（秒）：每隔这么久发一次静音保活
-    KEEPALIVE_INTERVAL = 60
-    # 静音 PCM：200ms 的 16kHz 16bit 单声道全零音频
-    SILENCE_PCM_B64 = __import__("base64").b64encode(b'\x00' * 6400).decode()
-
     def __init__(self, api_key: str, model: str, base_url: str):
         self.api_key = api_key
         self.model = model
@@ -26,8 +21,6 @@ class OmniRealtimeService:
         self.is_connected = False
         self._event_callback: Optional[Callable] = None
         self._listen_task: Optional[asyncio.Task] = None
-        self._keepalive_task: Optional[asyncio.Task] = None
-        self._last_send_time: float = 0
 
     async def connect(self):
         """建立与阿里云 Realtime API 的 WebSocket 连接"""
@@ -40,13 +33,6 @@ class OmniRealtimeService:
 
     async def disconnect(self):
         """断开连接"""
-        if self._keepalive_task and not self._keepalive_task.done():
-            self._keepalive_task.cancel()
-            try:
-                await self._keepalive_task
-            except asyncio.CancelledError:
-                pass
-
         if self._listen_task and not self._listen_task.done():
             self._listen_task.cancel()
             try:
@@ -153,7 +139,6 @@ class OmniRealtimeService:
         """
         self._event_callback = callback
         self._listen_task = asyncio.create_task(self._listen_loop())
-        self._keepalive_task = asyncio.create_task(self._keepalive_loop())
 
     async def _listen_loop(self):
         """持续监听 WebSocket 消息"""
@@ -167,20 +152,6 @@ class OmniRealtimeService:
         except asyncio.CancelledError:
             pass
 
-    async def _keepalive_loop(self):
-        """心跳保活：定期发送静音音频防止空闲超时（300秒）"""
-        try:
-            while self.is_connected:
-                await asyncio.sleep(self.KEEPALIVE_INTERVAL)
-                # 如果最近没有发过任何数据，发一段静音
-                elapsed = time.time() - self._last_send_time
-                if elapsed >= self.KEEPALIVE_INTERVAL and self.is_connected:
-                    await self.append_audio(self.SILENCE_PCM_B64)
-        except asyncio.CancelledError:
-            pass
-        except Exception:
-            pass
-
     # ==================== 内部工具 ====================
 
     async def _send(self, event: dict):
@@ -188,7 +159,6 @@ class OmniRealtimeService:
         if not self.ws:
             raise RuntimeError("WebSocket 未连接")
         await self.ws.send(json.dumps(event))
-        self._last_send_time = time.time()
 
     @staticmethod
     def _gen_event_id() -> str:

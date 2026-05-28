@@ -26,7 +26,9 @@
           <!-- 音频播放按钮 -->
           <button
             v-if="msg.audioData && !msg.isStreaming"
+            type="button"
             class="btn-play-audio"
+            aria-label="播放这条语音回复"
             @click="handlePlayAudio(msg.audioData)"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14"/></svg>
@@ -40,11 +42,11 @@
     <div class="input-area">
       <!-- 附件预览 -->
       <div v-if="attachedImage" class="attachment-preview">
-        <img :src="'data:image/jpeg;base64,' + attachedImage" alt="附件" />
-        <button class="btn-remove-attachment" @click="attachedImage = null" aria-label="移除附件">×</button>
+        <img :src="'data:image/jpeg;base64,' + attachedImage" alt="待发送的图片附件" />
+        <button type="button" class="btn-remove-attachment" @click="attachedImage = null" aria-label="移除图片附件">×</button>
       </div>
       <div class="input-row">
-        <button class="btn-attach" @click="attachScreenshot" aria-label="附带截图">
+        <button type="button" class="btn-attach" @click="attachScreenshot" aria-label="添加图片附件" title="添加图片附件">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>
           </svg>
@@ -58,10 +60,12 @@
           @input="autoResize"
         ></textarea>
         <button
+          type="button"
           class="btn-send"
           :disabled="!canSend"
           @click="handleSend"
           aria-label="发送消息"
+          title="发送消息"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
@@ -240,7 +244,7 @@ watch(() => chatStore.messages.length, scrollToBottom)
 
 .message-avatar.user {
   background: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
 }
 
 .message-avatar.assistant {
@@ -346,7 +350,7 @@ watch(() => chatStore.messages.length, scrollToBottom)
   height: 18px;
   border-radius: 50%;
   background: var(--error);
-  color: #fff;
+  color: var(--text-on-accent);
   font-size: var(--type-label);
   font-weight: 600;
   line-height: 1;
@@ -393,7 +397,7 @@ watch(() => chatStore.messages.length, scrollToBottom)
 
 .btn-send {
   background: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
 }
 
 .btn-send:hover:not(:disabled) {
@@ -401,7 +405,13 @@ watch(() => chatStore.messages.length, scrollToBottom)
 }
 
 .btn-send:disabled {
-  opacity: 0.3;
+  opacity: 0.35;
   cursor: not-allowed;
+}
+
+.btn-send:active:not(:disabled),
+.btn-attach:active,
+.btn-play-audio:active {
+  transform: translateY(1px);
 }
 </style>

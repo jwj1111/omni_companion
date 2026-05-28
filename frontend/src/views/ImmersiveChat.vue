@@ -30,8 +30,10 @@
     <!-- 控制区域 -->
     <div class="control-area">
       <button
+        type="button"
         class="btn-mic"
         :class="{ active: isActive, disconnected: isDisconnected, connecting: isConnecting }"
+        :disabled="isConnecting"
         @click="toggleSession"
         :aria-label="isActive ? '停止语音' : (isDisconnected ? '重新连接' : '开始语音对话')"
       >
@@ -547,7 +549,7 @@ onBeforeUnmount(() => {
 .btn-mic.active {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
   box-shadow: var(--shadow-accent);
 }
 
@@ -556,9 +558,14 @@ onBeforeUnmount(() => {
   color: var(--accent-dark);
 }
 
-.btn-mic.connecting {
+.btn-mic.connecting,
+.btn-mic:disabled {
   opacity: 0.5;
   cursor: wait;
+}
+
+.btn-mic:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 .control-hint {

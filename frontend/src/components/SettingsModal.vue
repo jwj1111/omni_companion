@@ -1,9 +1,9 @@
 <template>
   <div class="settings-overlay" @click.self="$emit('close')">
-    <div class="settings-panel">
+    <div class="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title">
       <header class="settings-header">
-        <h2>设置</h2>
-        <button class="btn-close" @click="$emit('close')">
+        <h2 id="settings-title">设置</h2>
+        <button type="button" class="btn-close" @click="$emit('close')" aria-label="关闭设置">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
           </svg>
@@ -11,7 +11,7 @@
       </header>
 
       <nav class="settings-nav">
-        <button v-for="t in tabs" :key="t.id" :class="{ active: tab === t.id }" @click="tab = t.id">
+        <button type="button" v-for="t in tabs" :key="t.id" :class="{ active: tab === t.id }" @click="tab = t.id">
           {{ t.label }}
         </button>
       </nav>
@@ -20,13 +20,13 @@
         <!-- API 配置 -->
         <div v-if="tab === 'api'" class="tab-content">
           <div class="form-group">
-            <label>API Key</label>
-            <input type="password" v-model="form.apiKey" placeholder="sk-xxx" />
+            <label for="settings-api-key">API Key</label>
+            <input id="settings-api-key" type="password" v-model="form.apiKey" placeholder="sk-xxx" autocomplete="off" />
             <p class="hint">阿里云百炼 API Key</p>
           </div>
           <div class="form-group">
-            <label>区域</label>
-            <select v-model="form.region">
+            <label for="settings-region">区域</label>
+            <select id="settings-region" v-model="form.region">
               <option value="beijing">北京</option>
               <option value="singapore">新加坡</option>
             </select>
@@ -36,36 +36,36 @@
         <!-- 角色管理 -->
         <div v-if="tab === 'persona'" class="tab-content">
           <div class="form-group">
-            <label>角色名称</label>
-            <input v-model="form.personaName" placeholder="角色名" />
+            <label for="settings-persona-name">角色名称</label>
+            <input id="settings-persona-name" v-model="form.personaName" placeholder="角色名" />
           </div>
           <div class="form-group">
-            <label>音色</label>
-            <select v-model="form.voice">
+            <label for="settings-voice">音色</label>
+            <select id="settings-voice" v-model="form.voice">
               <option v-for="v in voices" :key="v.id" :value="v.id">
                 {{ v.name }} - {{ v.desc }}
               </option>
             </select>
           </div>
           <div class="form-group">
-            <label>性格</label>
-            <textarea v-model="form.personality" rows="3"></textarea>
+            <label for="settings-personality">性格</label>
+            <textarea id="settings-personality" v-model="form.personality" rows="3"></textarea>
           </div>
           <div class="form-group">
-            <label>背景身份</label>
-            <textarea v-model="form.background" rows="2"></textarea>
+            <label for="settings-background">背景身份</label>
+            <textarea id="settings-background" v-model="form.background" rows="2"></textarea>
           </div>
           <div class="form-group">
-            <label>说话风格</label>
-            <textarea v-model="form.speakingStyle" rows="3"></textarea>
+            <label for="settings-speaking-style">说话风格</label>
+            <textarea id="settings-speaking-style" v-model="form.speakingStyle" rows="3"></textarea>
           </div>
           <div class="form-group">
-            <label>与用户关系</label>
-            <textarea v-model="form.relationship" rows="2"></textarea>
+            <label for="settings-relationship">与用户关系</label>
+            <textarea id="settings-relationship" v-model="form.relationship" rows="2"></textarea>
           </div>
           <div class="form-group">
-            <label>口癖（选填）</label>
-            <textarea v-model="form.quirks" rows="2" placeholder="例如常用语气词、习惯句式，可留空"></textarea>
+            <label for="settings-quirks">口癖（选填）</label>
+            <textarea id="settings-quirks" v-model="form.quirks" rows="2" placeholder="例如常用语气词、习惯句式，可留空"></textarea>
             <p class="hint">留空则不额外限制角色口癖</p>
           </div>
         </div>
@@ -77,8 +77,8 @@
             <input type="checkbox" v-model="form.nonRealtimeSearch" />
           </div>
           <div class="form-group row">
-            <label>语音对话联网搜索</label>
-            <input type="checkbox" v-model="form.realtimeSearch" />
+            <label for="settings-realtime-search">语音对话联网搜索</label>
+            <input id="settings-realtime-search" type="checkbox" v-model="form.realtimeSearch" />
           </div>
           <div class="form-group row">
             <label>语音回复</label>
@@ -110,8 +110,9 @@
         <!-- 行为规范 -->
         <div v-if="tab === 'prompt'" class="tab-content">
           <div class="form-group">
-            <label>行为规范</label>
+            <label for="settings-interaction-rules">行为规范</label>
             <textarea
+              id="settings-interaction-rules"
               v-model="form.interactionRules"
               rows="16"
               class="rules-textarea"
@@ -128,7 +129,7 @@
       </div>
 
       <footer class="settings-footer">
-        <button class="btn-save" @click="save" :disabled="saving">
+        <button type="button" class="btn-save" @click="save" :disabled="saving">
           {{ saving ? '保存中...' : '保存' }}
         </button>
       </footer>
@@ -266,7 +267,7 @@ async function save() {
 .settings-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(8, 12, 16, 0.8);
+  background: var(--overlay-scrim);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -430,12 +431,12 @@ async function save() {
 
 .settings-toast.success {
   color: var(--success);
-  background: rgba(76, 175, 80, 0.08);
+  background: var(--success-subtle);
 }
 
 .settings-toast.error {
   color: var(--error);
-  background: rgba(224, 72, 72, 0.08);
+  background: var(--error-subtle);
 }
 
 @keyframes fadeIn {
@@ -446,7 +447,7 @@ async function save() {
 .btn-save {
   padding: 7px 18px;
   background: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
   border-radius: var(--radius-sm);
   font-size: var(--type-label);
   font-weight: 600;
@@ -462,6 +463,12 @@ async function save() {
 .btn-save:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.btn-save:active:not(:disabled),
+.btn-close:active,
+.settings-nav button:active {
+  transform: translateY(1px);
 }
 
 .rules-textarea {

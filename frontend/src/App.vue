@@ -6,7 +6,7 @@
         <img class="app-logo" :src="logoUrl" alt="" width="50" height="24" aria-hidden="true" />
         <h1 class="app-title">Omni Companion</h1>
       </div>
-      <button class="btn-settings" @click="showSettings = true" aria-label="设置">
+      <button type="button" class="btn-settings" @click="showSettings = true" aria-label="打开设置">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
           <path d="M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.09a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z"/><circle cx="12" cy="12" r="3"/>
         </svg>
@@ -108,6 +108,10 @@ provide('screenMonitor', screenMonitorRef)
 .btn-settings:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
+}
+
+.btn-settings:active {
+  transform: translateY(1px);
 }
 
 .app-main {

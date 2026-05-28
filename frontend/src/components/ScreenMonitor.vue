@@ -6,8 +6,10 @@
         <span class="label">屏幕监控</span>
       </div>
       <button
+        type="button"
         class="btn-capture"
         :disabled="isRequesting"
+
         @click="isCapturing ? stopCapture() : startCapture()"
         :aria-label="isCapturing ? '停止屏幕采集' : '开始屏幕采集'"
       >
@@ -136,8 +138,8 @@ defineExpose({ captureFrame, isCapturing })
   letter-spacing: var(--tracking-label);
 }
 
-
 .dot {
+
   width: 6px;
   height: 6px;
   border-radius: 50%;
@@ -163,8 +165,8 @@ defineExpose({ captureFrame, isCapturing })
   letter-spacing: var(--tracking-label);
 }
 
-
 .btn-capture:hover:not(:disabled) {
+
   background: var(--accent-subtle);
   border-color: var(--accent);
   color: var(--accent-light);
@@ -174,6 +176,11 @@ defineExpose({ captureFrame, isCapturing })
   opacity: 0.5;
   cursor: wait;
 }
+
+.btn-capture:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
 
 .monitor-preview {
   flex: 1;
@@ -207,8 +214,8 @@ defineExpose({ captureFrame, isCapturing })
   line-height: var(--leading-body);
 }
 
-
 .placeholder .error-text {
+
   color: var(--error);
   opacity: 1;
 }

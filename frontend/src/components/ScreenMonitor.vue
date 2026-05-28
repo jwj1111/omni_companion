@@ -5,8 +5,13 @@
         <span class="dot" :class="{ active: isCapturing }"></span>
         <span class="label">屏幕监控</span>
       </div>
-      <button class="btn-capture" @click="isCapturing ? stopCapture() : startCapture()">
-        {{ isCapturing ? '停止' : '开始采集' }}
+      <button
+        class="btn-capture"
+        :disabled="isRequesting"
+        @click="isCapturing ? stopCapture() : startCapture()"
+        :aria-label="isCapturing ? '停止屏幕采集' : '开始屏幕采集'"
+      >
+        {{ isRequesting ? '等待授权...' : (isCapturing ? '停止' : '开始采集') }}
       </button>
     </div>
     <div class="monitor-preview">
@@ -16,13 +21,15 @@
         autoplay
         muted
         playsinline
+        aria-hidden="true"
       ></video>
       <canvas ref="canvasRef" style="display: none;"></canvas>
       <div v-if="!isCapturing" class="placeholder">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3">
           <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
         </svg>
-        <p>点击"开始采集"共享游戏画面</p>
+        <p v-if="errorMsg" class="error-text">{{ errorMsg }}</p>
+        <p v-else>共享屏幕后，AI 可以看到你的画面</p>
       </div>
     </div>
   </div>
@@ -32,6 +39,8 @@
 import { ref, onBeforeUnmount } from 'vue'
 
 const isCapturing = ref(false)
+const isRequesting = ref(false)
+const errorMsg = ref('')
 const videoRef = ref(null)
 const canvasRef = ref(null)
 
@@ -39,9 +48,11 @@ let mediaStream = null
 let frameInterval = null
 
 async function startCapture() {
+  errorMsg.value = ''
+  isRequesting.value = true
   try {
     mediaStream = await navigator.mediaDevices.getDisplayMedia({
-      video: true,  // 不限帧率，预览丝滑；抽帧频率由定时器另外控制
+      video: true,
       audio: false
     })
     videoRef.value.srcObject = mediaStream
@@ -51,7 +62,13 @@ async function startCapture() {
       stopCapture()
     })
   } catch (err) {
-    console.error('屏幕采集失败:', err)
+    if (err.name === 'NotAllowedError') {
+      errorMsg.value = '屏幕共享权限被拒绝'
+    } else {
+      errorMsg.value = `采集失败: ${err.message}`
+    }
+  } finally {
+    isRequesting.value = false
   }
 }
 
@@ -100,10 +117,11 @@ defineExpose({ captureFrame, isCapturing })
 }
 
 .monitor-header {
-  padding: 10px 16px;
+  padding: 8px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  background: var(--bg-panel);
   border-bottom: 1px solid var(--border);
 }
 
@@ -111,16 +129,17 @@ defineExpose({ captureFrame, isCapturing })
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 12px;
+  color: var(--text-secondary);
+  letter-spacing: 0.2px;
 }
 
 .dot {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--text-muted);
-  transition: background var(--transition-normal);
+  transition: all var(--transition-normal);
 }
 
 .dot.active {
@@ -129,19 +148,25 @@ defineExpose({ captureFrame, isCapturing })
 }
 
 .btn-capture {
-  padding: 5px 12px;
-  font-size: 12px;
-  border-radius: var(--radius-sm);
-  background: var(--bg-card);
-  border: 1px solid var(--border);
+  padding: 4px 10px;
+  font-size: 11px;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  border: 1px solid var(--border-light);
   color: var(--text-secondary);
   transition: all var(--transition-fast);
+  letter-spacing: 0.2px;
 }
 
-.btn-capture:hover {
-  background: var(--bg-hover);
+.btn-capture:hover:not(:disabled) {
+  background: var(--accent-subtle);
   border-color: var(--accent);
   color: var(--accent-light);
+}
+
+.btn-capture:disabled {
+  opacity: 0.5;
+  cursor: wait;
 }
 
 .monitor-preview {
@@ -149,8 +174,9 @@ defineExpose({ captureFrame, isCapturing })
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #000;
+  background: var(--bg-deepest);
   overflow: hidden;
+  position: relative;
 }
 
 .monitor-preview video {
@@ -163,8 +189,20 @@ defineExpose({ captureFrame, isCapturing })
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
   color: var(--text-muted);
   font-size: 13px;
+  opacity: 0.7;
+}
+
+.placeholder p {
+  max-width: 200px;
+  text-align: center;
+  line-height: 1.5;
+}
+
+.placeholder .error-text {
+  color: var(--error);
+  opacity: 1;
 }
 </style>

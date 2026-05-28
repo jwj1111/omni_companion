@@ -169,10 +169,24 @@ async def realtime_session(websocket: WebSocket):
         if realtime.is_connected:
             await realtime.disconnect()
     except Exception as e:
-        # 异常断开
+        # 异常断开 — 打印完整错误便于调试
+        import traceback
+        print(f"\n[Realtime WS Error] {type(e).__name__}: {e}")
+        traceback.print_exc()
+
+        # 尝试将错误原因发给前端
+        error_msg = str(e)
         try:
-            await websocket.send_json({"type": "error", "message": str(e)})
+            await websocket.send_json({"type": "error", "message": error_msg})
         except Exception:
             pass
+
+        # 清理阿里云连接
         if realtime.is_connected:
             await realtime.disconnect()
+
+        # 显式关闭前端 WS，带上 reason（前端 onclose 可读取）
+        try:
+            await websocket.close(code=1011, reason=error_msg[:120])
+        except Exception:
+            pass

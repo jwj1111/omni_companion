@@ -1,7 +1,7 @@
 {
-  "name": "game-ai-companion",
+  "name": "omni-companion",
   "version": "0.1.0",
-  "description": "游戏AI陪聊 - Web 客户端",
+  "description": "Omni Companion - Web Client",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -33,9 +33,13 @@ export class RealtimeService {
       }
     }
 
-    this.ws.onclose = () => {
+    this.ws.onclose = (event) => {
       this.isConnected = false
       if (this.onEvent) {
+        // 如果服务端带了 reason，先作为 error 事件通知
+        if (event.reason) {
+          this.onEvent({ type: 'error', message: event.reason })
+        }
         this.onEvent({ type: 'status', event: 'disconnected' })
       }
     }

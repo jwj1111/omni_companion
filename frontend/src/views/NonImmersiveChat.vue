@@ -4,9 +4,9 @@
     <ChatModeTabs active="non-immersive" />
 
     <!-- 消息列表 -->
-    <div class="message-list" ref="messageListRef">
+    <div class="message-list" ref="messageListRef" aria-live="polite" aria-label="消息列表">
       <div v-if="messages.length === 0" class="empty-state">
-        <p class="text-muted">开始聊天吧</p>
+        <p class="text-muted">输入消息开始对话</p>
       </div>
       <div
         v-for="msg in messages"
@@ -14,18 +14,19 @@
         class="message-item"
         :class="msg.role"
       >
-        <div class="message-avatar">
-          {{ msg.role === 'user' ? '🎮' : '💜' }}
+        <div class="message-avatar" :class="msg.role">
+          {{ msg.role === 'user' ? 'U' : 'A' }}
         </div>
         <div class="message-bubble">
-          <div class="message-text">{{ msg.content }}<span v-if="msg.isStreaming" class="cursor-blink">|</span></div>
+          <div class="message-text">{{ msg.content }}</div>
           <!-- 音频播放按钮 -->
           <button
             v-if="msg.audioData && !msg.isStreaming"
             class="btn-play-audio"
             @click="handlePlayAudio(msg.audioData)"
           >
-            🔊 播放语音
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14"/></svg>
+            播放语音
           </button>
         </div>
       </div>
@@ -36,10 +37,10 @@
       <!-- 附件预览 -->
       <div v-if="attachedImage" class="attachment-preview">
         <img :src="'data:image/jpeg;base64,' + attachedImage" alt="附件" />
-        <button class="btn-remove-attachment" @click="attachedImage = null">×</button>
+        <button class="btn-remove-attachment" @click="attachedImage = null" aria-label="移除附件">×</button>
       </div>
       <div class="input-row">
-        <button class="btn-attach" @click="attachScreenshot" title="附带截图">
+        <button class="btn-attach" @click="attachScreenshot" aria-label="附带截图">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>
           </svg>
@@ -56,6 +57,7 @@
           class="btn-send"
           :disabled="!canSend"
           @click="handleSend"
+          aria-label="发送消息"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
@@ -177,7 +179,7 @@ watch(() => chatStore.messages.length, scrollToBottom)
 .message-list {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
+  padding: 20px 16px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -188,12 +190,20 @@ watch(() => chatStore.messages.length, scrollToBottom)
   display: flex;
   align-items: center;
   justify-content: center;
+  color: var(--text-muted);
+  font-size: 13px;
 }
 
 .message-item {
   display: flex;
   gap: 10px;
-  max-width: 85%;
+  max-width: 88%;
+  animation: msg-in 0.2s ease-out;
+}
+
+@keyframes msg-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .message-item.user {
@@ -202,68 +212,76 @@ watch(() => chatStore.messages.length, scrollToBottom)
 }
 
 .message-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--bg-card);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 11px;
+  font-weight: 600;
   flex-shrink: 0;
+}
+
+.message-avatar.user {
+  background: var(--accent);
+  color: #fff;
+}
+
+.message-avatar.assistant {
+  background: var(--bg-card);
+  color: var(--accent-light);
+  border: 1px solid var(--border);
 }
 
 .message-bubble {
   padding: 10px 14px;
-  border-radius: var(--radius-lg);
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 13px;
+  line-height: 1.6;
   white-space: pre-wrap;
   word-break: break-word;
 }
 
 .message-item.user .message-bubble {
-  background: var(--accent-dark);
-  color: #fff;
-  border-bottom-right-radius: 4px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border-radius: var(--radius-md) var(--radius-md) var(--radius-xs) var(--radius-md);
+  border: 1px solid var(--border);
 }
 
 .message-item.assistant .message-bubble {
-  background: var(--bg-card);
+  background: transparent;
   color: var(--text-primary);
-  border-bottom-left-radius: 4px;
-}
-
-.cursor-blink {
-  animation: blink 1s infinite;
-  color: var(--accent-light);
-}
-
-@keyframes blink {
-  0%, 50% { opacity: 1; }
-  51%, 100% { opacity: 0; }
+  border-radius: var(--radius-md) var(--radius-md) var(--radius-md) var(--radius-xs);
+  border-left: 2px solid var(--accent-subtle);
+  padding-left: 12px;
 }
 
 .btn-play-audio {
   margin-top: 8px;
   padding: 4px 10px;
-  font-size: 12px;
-  border-radius: var(--radius-sm);
-  background: var(--bg-hover);
+  font-size: 11px;
+  border-radius: var(--radius-xs);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
   color: var(--text-secondary);
   transition: all var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .btn-play-audio:hover {
-  background: var(--accent-dark);
-  color: #fff;
+  border-color: var(--accent);
+  color: var(--accent-light);
+  background: var(--accent-subtle);
 }
 
 /* 输入区域 */
 .input-area {
-  padding: 12px 16px;
+  padding: 10px 16px 12px;
   border-top: 1px solid var(--border);
-  background: var(--bg-panel);
+  background: var(--bg-deepest);
 }
 
 .attachment-preview {
@@ -273,21 +291,21 @@ watch(() => chatStore.messages.length, scrollToBottom)
 }
 
 .attachment-preview img {
-  max-height: 80px;
+  max-height: 60px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
 }
 
 .btn-remove-attachment {
   position: absolute;
-  top: -6px;
-  right: -6px;
-  width: 20px;
-  height: 20px;
+  top: -5px;
+  right: -5px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   background: var(--error);
   color: #fff;
-  font-size: 14px;
+  font-size: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -304,33 +322,29 @@ watch(() => chatStore.messages.length, scrollToBottom)
   min-height: 36px;
   max-height: 120px;
   padding: 8px 12px;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   background: var(--bg-card);
   border: 1px solid var(--border);
   color: var(--text-primary);
-  line-height: 1.4;
-  transition: border-color var(--transition-fast);
-}
-
-.input-row textarea:focus {
-  border-color: var(--accent);
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .btn-attach,
 .btn-send {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-sm);
-  color: var(--text-secondary);
+  color: var(--text-muted);
   transition: all var(--transition-fast);
 }
 
 .btn-attach:hover {
+  color: var(--text-secondary);
   background: var(--bg-hover);
-  color: var(--accent-light);
 }
 
 .btn-send {
@@ -343,7 +357,7 @@ watch(() => chatStore.messages.length, scrollToBottom)
 }
 
 .btn-send:disabled {
-  opacity: 0.4;
+  opacity: 0.3;
   cursor: not-allowed;
 }
 </style>

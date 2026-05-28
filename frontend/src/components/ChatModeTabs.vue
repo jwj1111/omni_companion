@@ -1,18 +1,12 @@
 <template>
-  <div class="mode-tabs">
+  <nav class="mode-tabs">
     <router-link to="/chat" class="tab" :class="{ active: active === 'non-immersive' }">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
-      </svg>
-      <span>非沉浸</span>
+      <span class="tab-label">文字对话</span>
     </router-link>
     <router-link to="/immersive" class="tab" :class="{ active: active === 'immersive' }">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8"/>
-      </svg>
-      <span>沉浸</span>
+      <span class="tab-label">语音对话</span>
     </router-link>
-  </div>
+  </nav>
 </template>
 
 <script setup>
@@ -24,32 +18,46 @@ defineProps({
 <style scoped>
 .mode-tabs {
   display: flex;
+  padding: 0 16px;
+  gap: 2px;
   background: var(--bg-panel);
   border-bottom: 1px solid var(--border);
 }
 
 .tab {
-  flex: 1;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 12px;
+  padding: 10px 16px;
   text-decoration: none;
   color: var(--text-muted);
-  font-size: 13px;
-  font-weight: 500;
-  transition: all var(--transition-fast);
-  border-bottom: 2px solid transparent;
+  font-size: 12px;
+  letter-spacing: 0.3px;
+  transition: color var(--transition-fast);
+}
+
+.tab::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 16px;
+  right: 16px;
+  height: 2px;
+  background: transparent;
+  border-radius: 1px 1px 0 0;
+  transition: background var(--transition-fast);
 }
 
 .tab:hover {
   color: var(--text-secondary);
-  background: var(--bg-hover);
 }
 
 .tab.active {
   color: var(--accent-light);
-  border-bottom-color: var(--accent);
+}
+
+.tab.active::after {
+  background: var(--accent);
 }
 </style>

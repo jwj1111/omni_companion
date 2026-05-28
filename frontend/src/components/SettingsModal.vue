@@ -68,15 +68,15 @@
         <!-- 功能开关 -->
         <div v-if="tab === 'features'" class="tab-content">
           <div class="form-group row">
-            <label>非实时联网搜索</label>
+            <label>文字对话联网搜索</label>
             <input type="checkbox" v-model="form.nonRealtimeSearch" />
           </div>
           <div class="form-group row">
-            <label>实时联网搜索</label>
+            <label>语音对话联网搜索</label>
             <input type="checkbox" v-model="form.realtimeSearch" />
           </div>
           <div class="form-group row">
-            <label>输出音频</label>
+            <label>语音回复</label>
             <input type="checkbox" v-model="form.outputAudio" />
           </div>
         </div>
@@ -84,25 +84,48 @@
         <!-- 实时模式 -->
         <div v-if="tab === 'realtime'" class="tab-content">
           <div class="form-group">
-            <label>VAD 类型</label>
+            <label>语音检测方式</label>
             <select v-model="form.vadType">
-              <option value="semantic_vad">Semantic VAD（推荐）</option>
-              <option value="server_vad">Server VAD</option>
+              <option value="semantic_vad">语义检测（推荐）</option>
+              <option value="server_vad">静音检测</option>
             </select>
           </div>
           <div class="form-group">
-            <label>静默时长 (ms)</label>
+            <label>停顿判定时长</label>
             <input type="number" v-model.number="form.silenceDuration" min="300" max="2000" step="100" />
+            <p class="hint">停顿多久后认为你说完了（毫秒）</p>
           </div>
           <div class="form-group">
-            <label>截屏频率 (ms)</label>
+            <label>画面采集间隔</label>
             <input type="number" v-model.number="form.screenshotInterval" min="500" max="10000" step="500" />
+            <p class="hint">多久截一次屏发给 AI（毫秒）</p>
+          </div>
+        </div>
+
+        <!-- 行为规范 -->
+        <div v-if="tab === 'prompt'" class="tab-content">
+          <div class="form-group">
+            <label>行为规范</label>
+            <textarea
+              v-model="form.interactionRules"
+              rows="16"
+              class="rules-textarea"
+              placeholder="定义 AI 的性格、说话方式和行为边界..."
+            ></textarea>
+            <p class="hint">定义 AI 的说话方式和行为边界，保存后下次对话生效</p>
           </div>
         </div>
       </section>
 
+      <!-- Toast 消息 -->
+      <div v-if="toast" class="settings-toast" :class="toast.type" role="alert">
+        {{ toast.message }}
+      </div>
+
       <footer class="settings-footer">
-        <button class="btn-save" @click="save">保存</button>
+        <button class="btn-save" @click="save" :disabled="saving">
+          {{ saving ? '保存中...' : '保存' }}
+        </button>
       </footer>
     </div>
   </div>
@@ -110,18 +133,26 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { getSettings, getVoices } from '@/services/api'
+import { getSettings, getVoices, updateRules, updateSettings, updateEnv, updatePersona } from '@/services/api'
 
 defineEmits(['close'])
 
 const tabs = [
-  { id: 'api', label: 'API' },
+  { id: 'api', label: '接口' },
   { id: 'persona', label: '角色' },
   { id: 'features', label: '功能' },
-  { id: 'realtime', label: '实时模式' },
+  { id: 'realtime', label: '语音模式' },
+  { id: 'prompt', label: '行为规范' },
 ]
 const tab = ref('api')
 const voices = ref([])
+const saving = ref(false)
+const toast = ref(null)
+
+function showToast(message, type = 'success') {
+  toast.value = { message, type }
+  setTimeout(() => { toast.value = null }, 3000)
+}
 
 const form = ref({
   apiKey: '',
@@ -138,7 +169,10 @@ const form = ref({
   vadType: 'semantic_vad',
   silenceDuration: 800,
   screenshotInterval: 1000,
+  interactionRules: '',
 })
+
+let activePersonaId = 'a001'
 
 onMounted(async () => {
   try {
@@ -146,7 +180,8 @@ onMounted(async () => {
     voices.value = voicesResp.voices || []
 
     // 填充表单
-    const { settings, persona, env } = settingsResp
+    const { settings, persona, env, interaction_rules } = settingsResp
+    activePersonaId = settings?.active_persona || 'a001'
     form.value.region = env?.region || 'beijing'
     form.value.personaName = persona?.name || ''
     form.value.voice = persona?.voice || settings?.voice || 'Tina'
@@ -160,16 +195,62 @@ onMounted(async () => {
     form.value.vadType = settings?.realtime?.vad_type || 'semantic_vad'
     form.value.silenceDuration = settings?.realtime?.silence_duration_ms || 800
     form.value.screenshotInterval = settings?.screen_capture?.interval_ms || 1000
+    form.value.interactionRules = interaction_rules || ''
   } catch (e) {
-    console.error('加载设置失败:', e)
+    showToast('加载设置失败，请刷新重试', 'error')
   }
 })
 
 async function save() {
-  // TODO: 调用后端 PUT /api/settings/update 和 /api/settings/env
-  // 暂时只打印
-  console.log('保存设置:', form.value)
-  alert('设置已保存（当前为前端演示，需后端配合）')
+  saving.value = true
+  try {
+    const f = form.value
+
+    // 1. 保存 API Key / Region（仅在有值时）
+    if (f.apiKey) {
+      await updateEnv('DASHSCOPE_API_KEY', f.apiKey)
+    }
+    await updateEnv('API_REGION', f.region)
+
+    // 2. 保存角色
+    await updatePersona(activePersonaId, {
+      name: f.personaName,
+      voice: f.voice,
+      personality: f.personality,
+      background: f.background,
+      speaking_style: f.speakingStyle,
+      relationship: f.relationship,
+    })
+
+    // 3. 保存 settings
+    await updateSettings({
+      active_persona: activePersonaId,
+      voice: f.voice,
+      output: {
+        modalities: f.outputAudio ? ['text', 'audio'] : ['text'],
+      },
+      realtime: {
+        vad_type: f.vadType,
+        silence_duration_ms: f.silenceDuration,
+        enable_search: f.realtimeSearch,
+      },
+      non_realtime: {
+        enable_search: f.nonRealtimeSearch,
+      },
+      screen_capture: {
+        interval_ms: f.screenshotInterval,
+      },
+    })
+
+    // 4. 保存行为规范 prompt
+    await updateRules(f.interactionRules)
+
+    showToast('已保存，下次对话生效')
+  } catch (e) {
+    showToast('保存失败，请检查网络后重试', 'error')
+  } finally {
+    saving.value = false
+  }
 }
 </script>
 
@@ -177,36 +258,49 @@ async function save() {
 .settings-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(8, 12, 16, 0.8);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(6px);
+  animation: overlay-in 0.15s ease-out;
+}
+
+@keyframes overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .settings-panel {
   background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  width: 600px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  width: 560px;
   max-height: 80vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-lg);
+  animation: panel-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes panel-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 .settings-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
+  padding: 14px 20px;
   border-bottom: 1px solid var(--border);
 }
 
 .settings-header h2 {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
 }
 
 .btn-close {
@@ -223,26 +317,27 @@ async function save() {
 
 .settings-nav {
   display: flex;
-  gap: 2px;
-  padding: 10px 20px;
+  gap: 0;
+  padding: 0 20px;
   border-bottom: 1px solid var(--border);
 }
 
 .settings-nav button {
-  padding: 6px 14px;
-  border-radius: var(--radius-sm);
-  font-size: 13px;
-  color: var(--text-secondary);
+  padding: 8px 12px;
+  border-radius: 0;
+  font-size: 12px;
+  color: var(--text-muted);
   transition: all var(--transition-fast);
+  border-bottom: 2px solid transparent;
 }
 
 .settings-nav button:hover {
-  background: var(--bg-hover);
+  color: var(--text-secondary);
 }
 
 .settings-nav button.active {
-  background: var(--accent-dark);
-  color: #fff;
+  color: var(--accent-light);
+  border-bottom-color: var(--accent);
 }
 
 .settings-content {
@@ -309,17 +404,52 @@ async function save() {
   justify-content: flex-end;
 }
 
-.btn-save {
+.settings-toast {
   padding: 8px 20px;
+  font-size: 12px;
+  text-align: center;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.settings-toast.success {
+  color: var(--success);
+  background: rgba(76, 175, 80, 0.08);
+}
+
+.settings-toast.error {
+  color: var(--error);
+  background: rgba(224, 72, 72, 0.08);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.btn-save {
+  padding: 7px 18px;
   background: var(--accent);
   color: #fff;
   border-radius: var(--radius-sm);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
-  transition: background var(--transition-fast);
+  transition: all var(--transition-fast);
 }
 
 .btn-save:hover {
   background: var(--accent-light);
+}
+
+.btn-save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.rules-textarea {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  min-height: 300px;
+  resize: vertical;
 }
 </style>

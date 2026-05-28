@@ -37,6 +37,11 @@ class PersonaData(BaseModel):
     quirks: Optional[str] = ""
 
 
+class UpdateRulesRequest(BaseModel):
+    """更新行为规范请求"""
+    content: str
+
+
 # ==================== 路由 ====================
 
 @router.get("/all")
@@ -113,6 +118,19 @@ async def delete_persona(persona_id: str, cm=Depends(get_config_manager)):
     if not persona_path.exists():
         raise HTTPException(status_code=404, detail=f"角色不存在: {persona_id}")
     persona_path.unlink()
+    return {"status": "ok"}
+
+
+@router.get("/rules")
+async def get_rules(cm=Depends(get_config_manager)):
+    """获取行为规范 prompt"""
+    return {"content": cm.load_interaction_rules()}
+
+
+@router.put("/rules")
+async def update_rules(req: UpdateRulesRequest, cm=Depends(get_config_manager)):
+    """更新行为规范 prompt"""
+    cm.save_interaction_rules(req.content)
     return {"status": "ok"}
 
 

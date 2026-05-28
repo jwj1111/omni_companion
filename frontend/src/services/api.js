@@ -74,6 +74,62 @@ export async function getVoices() {
 }
 
 /**
+ * 获取行为规范 prompt
+ */
+export async function getRules() {
+  const resp = await fetch(`${BASE_URL}/api/settings/rules`)
+  return resp.json()
+}
+
+/**
+ * 更新行为规范 prompt
+ */
+export async function updateRules(content) {
+  const resp = await fetch(`${BASE_URL}/api/settings/rules`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
+  })
+  return resp.json()
+}
+
+/**
+ * 更新设置
+ */
+export async function updateSettings(settings) {
+  const resp = await fetch(`${BASE_URL}/api/settings/update`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ settings }),
+  })
+  return resp.json()
+}
+
+/**
+ * 更新环境变量
+ */
+export async function updateEnv(key, value) {
+  const resp = await fetch(`${BASE_URL}/api/settings/env`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key, value }),
+  })
+  return resp.json()
+}
+
+/**
+ * 更新角色配置
+ */
+export async function updatePersona(personaId, data) {
+  const resp = await fetch(`${BASE_URL}/api/settings/persona/${personaId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  return resp.json()
+}
+
+/**
  * 上传截屏
  */
 export async function uploadScreenshot(imageB64) {

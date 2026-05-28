@@ -166,6 +166,13 @@ class ConfigManager:
         # 重新加载
         load_dotenv(self.env_path, override=True)
 
+    def save_interaction_rules(self, content: str):
+        """保存通用行为规范"""
+        self.prompts_dir.mkdir(parents=True, exist_ok=True)
+        rules_path = self.prompts_dir / "interaction_rules.txt"
+        with open(rules_path, "w", encoding="utf-8") as f:
+            f.write(content)
+
     # ==================== 查询 ====================
 
     def list_personas(self) -> list:

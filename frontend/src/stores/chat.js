@@ -3,6 +3,19 @@ import { ref, reactive } from 'vue'
 import { sendChatMessage, clearChatHistory } from '@/services/api'
 import { PcmStreamPlayer, stopAllAudio } from '@/services/audio'
 
+function getUserMessageText(content) {
+  if (typeof content === 'string') return content
+  const textPart = content.find(item => item.type === 'text')
+  return textPart?.text || '请描述这张图片'
+}
+
+function getUserMessageImage(content) {
+  if (!Array.isArray(content)) return ''
+  const imagePart = content.find(item => item.type === 'image_url')
+  const imageUrl = imagePart?.image_url?.url || ''
+  return imageUrl.startsWith('data:image/') ? imageUrl : ''
+}
+
 export const useChatStore = defineStore('chat', () => {
   const messages = ref([])
   const isLoading = ref(false)
@@ -21,11 +34,12 @@ export const useChatStore = defineStore('chat', () => {
     }
     stopAllAudio()  // 停掉 playPcmAudio 的一次性播放
 
-    // 添加用户消息到列表
+    // 添加用户消息到列表。多模态消息展示用户原话，并用紧凑附件标记提示已带图。
     const userMsg = reactive({
       id: Date.now(),
       role: 'user',
-      content: typeof content === 'string' ? content : '[多模态消息]',
+      content: getUserMessageText(content),
+      imageData: getUserMessageImage(content),
       rawContent: content,
       timestamp: new Date(),
     })

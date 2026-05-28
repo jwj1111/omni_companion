@@ -19,6 +19,10 @@
         </div>
         <div class="message-bubble">
           <div class="message-text">{{ msg.content }}</div>
+          <div v-if="msg.imageData" class="message-attachment">
+            <img :src="msg.imageData" alt="已附带的画面" />
+            <span>已附带画面</span>
+          </div>
           <!-- 音频播放按钮 -->
           <button
             v-if="msg.audioData && !msg.isStreaming"
@@ -263,6 +267,29 @@ watch(() => chatStore.messages.length, scrollToBottom)
   border-radius: var(--radius-md) var(--radius-md) var(--radius-md) var(--radius-xs);
   border-left: 2px solid var(--accent-subtle);
   padding-left: 12px;
+}
+
+.message-attachment {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 8px 4px 4px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-deepest);
+  border: 1px solid var(--border-light);
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1;
+}
+
+.message-attachment img {
+  width: 34px;
+  height: 24px;
+  object-fit: cover;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
 }
 
 .btn-play-audio {

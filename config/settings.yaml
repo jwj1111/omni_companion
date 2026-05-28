@@ -40,3 +40,11 @@ screen_capture:
   format: "jpeg"            # 前端输出格式（Realtime 要求必须 JPEG）
   max_size_kb: 190          # 前端压缩目标（后端兜底上限为 256KB base64）
 
+# ---------- 会话管理（后端读取） ----------
+session:
+  ttl_seconds: 1800              # 30 分钟无活动后清理会话
+  cleanup_interval_seconds: 600  # 每 10 分钟扫描一次
+  max_sessions: 100              # 最多保留 100 个会话，超出时清理最久未活跃的
+
+
+

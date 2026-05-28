@@ -7,7 +7,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from app.dependencies import get_config_manager, reset_services
+from app.dependencies import get_request_config_manager, get_session_id, reset_services
+
 
 router = APIRouter()
 
@@ -45,7 +46,8 @@ class UpdateRulesRequest(BaseModel):
 # ==================== 路由 ====================
 
 @router.get("/all")
-async def get_all_settings(cm=Depends(get_config_manager)):
+async def get_all_settings(cm=Depends(get_request_config_manager)):
+
     """获取所有配置"""
     env = cm.load_env()
     settings = cm.load_settings()
@@ -65,42 +67,56 @@ async def get_all_settings(cm=Depends(get_config_manager)):
 
 
 @router.put("/update")
-async def update_settings(req: UpdateSettingsRequest, cm=Depends(get_config_manager)):
-    """应用 settings 运行期微调"""
+async def update_settings(
+    req: UpdateSettingsRequest,
+    cm=Depends(get_request_config_manager),
+    session_id: str = Depends(get_session_id),
+):
+    """应用当前会话的 settings 运行期微调"""
     if req.settings:
         cm.save_settings(req.settings)
-        reset_services()
+        reset_services(session_id)
     return {"status": "ok"}
 
 
 @router.post("/reset-runtime")
-async def reset_runtime_settings(cm=Depends(get_config_manager)):
-    """清除运行期微调，恢复默认配置"""
+async def reset_runtime_settings(
+    cm=Depends(get_request_config_manager),
+    session_id: str = Depends(get_session_id),
+):
+    """清除当前会话的运行期微调，恢复默认配置"""
     cm.reset_runtime_overrides()
-    reset_services()
+    reset_services(session_id)
     return {"status": "ok"}
 
 
 @router.put("/env")
-async def update_env(req: UpdateEnvRequest, cm=Depends(get_config_manager)):
-    """更新环境变量；API Key 持久化，区域为运行期微调"""
+async def update_env(
+    req: UpdateEnvRequest,
+    cm=Depends(get_request_config_manager),
+    session_id: str = Depends(get_session_id),
+):
+    """更新环境变量；API Key 持久化，区域为当前会话运行期微调"""
     allowed_keys = ["DASHSCOPE_API_KEY", "DASHSCOPE_API_KEY_REALTIME", "API_REGION"]
     if req.key not in allowed_keys:
         raise HTTPException(status_code=400, detail=f"不允许修改的 key: {req.key}")
     cm.save_env_key(req.key, req.value)
-    reset_services()
+    reset_services(session_id)
     return {"status": "ok"}
 
 
 
+
 @router.get("/personas")
-async def list_personas(cm=Depends(get_config_manager)):
+async def list_personas(cm=Depends(get_request_config_manager)):
+
     """列出所有可用角色"""
     return {"personas": cm.list_personas()}
 
 
 @router.get("/persona/{persona_id}")
-async def get_persona(persona_id: str, cm=Depends(get_config_manager)):
+async def get_persona(persona_id: str, cm=Depends(get_request_config_manager)):
+
     """获取指定角色配置"""
     try:
         persona = cm.load_persona(persona_id)
@@ -110,19 +126,26 @@ async def get_persona(persona_id: str, cm=Depends(get_config_manager)):
 
 
 @router.put("/persona/{persona_id}")
-async def update_persona(persona_id: str, data: PersonaData, cm=Depends(get_config_manager)):
-    """应用角色运行期微调"""
+async def update_persona(
+    persona_id: str,
+    data: PersonaData,
+    cm=Depends(get_request_config_manager),
+    session_id: str = Depends(get_session_id),
+):
+    """应用当前会话的角色运行期微调"""
     persona_dict = data.model_dump()
     # 确保 role_id 一致
     persona_dict["role_id"] = persona_id
     cm.save_persona(persona_id, persona_dict)
-    reset_services()
+    reset_services(session_id)
     return {"status": "ok"}
 
 
 
+
 @router.delete("/persona/{persona_id}")
-async def delete_persona(persona_id: str, cm=Depends(get_config_manager)):
+async def delete_persona(persona_id: str, cm=Depends(get_request_config_manager)):
+
     """删除角色"""
     persona_path = cm.personas_dir / f"{persona_id}.yaml"
     if not persona_path.exists():
@@ -132,17 +155,23 @@ async def delete_persona(persona_id: str, cm=Depends(get_config_manager)):
 
 
 @router.get("/rules")
-async def get_rules(cm=Depends(get_config_manager)):
+async def get_rules(cm=Depends(get_request_config_manager)):
+
     """获取行为规范 prompt"""
     return {"content": cm.load_interaction_rules()}
 
 
 @router.put("/rules")
-async def update_rules(req: UpdateRulesRequest, cm=Depends(get_config_manager)):
-    """应用行为规范运行期微调"""
+async def update_rules(
+    req: UpdateRulesRequest,
+    cm=Depends(get_request_config_manager),
+    session_id: str = Depends(get_session_id),
+):
+    """应用当前会话的行为规范运行期微调"""
     cm.save_interaction_rules(req.content)
-    reset_services()
+    reset_services(session_id)
     return {"status": "ok"}
+
 
 
 

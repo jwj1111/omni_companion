@@ -241,7 +241,13 @@ class ConfigManager:
                 "format": "jpeg",
                 "max_size_kb": 190,
             },
+            "session": {
+                "ttl_seconds": 1800,
+                "cleanup_interval_seconds": 600,
+                "max_sessions": 100,
+            },
         }
+
 
     @staticmethod
     def _deep_merge(base: dict, override: dict) -> dict:

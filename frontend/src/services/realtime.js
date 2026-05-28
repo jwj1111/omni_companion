@@ -1,6 +1,8 @@
 /**
  * 沉浸模式 - WebSocket 实时通信服务
  */
+import { getSessionId } from './session'
+
 const WS_URL = 'ws://localhost:8000/api/realtime/ws'
 
 export class RealtimeService {
@@ -16,7 +18,8 @@ export class RealtimeService {
    */
   connect(onEvent) {
     this.onEvent = onEvent
-    this.ws = new WebSocket(WS_URL)
+    const url = `${WS_URL}?session_id=${encodeURIComponent(getSessionId())}`
+    this.ws = new WebSocket(url)
 
     this.ws.onopen = () => {
       this.isConnected = true

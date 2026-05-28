@@ -7,7 +7,15 @@ import asyncio
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from app.dependencies import get_config_manager, get_realtime_service, get_screen_cache
+from app.dependencies import (
+    create_realtime_service,
+    get_config_manager_for_session,
+    get_screen_cache_for_session,
+    normalize_session_id,
+    touch_session,
+)
+
+
 
 router = APIRouter()
 
@@ -32,11 +40,15 @@ async def realtime_session(websocket: WebSocket):
     """
     await websocket.accept()
 
-    cm = get_config_manager()
-    realtime = get_realtime_service()
-    screen_cache = get_screen_cache()
+    session_id = normalize_session_id(websocket.query_params.get("session_id"))
+    touch_session(session_id)
+    cm = get_config_manager_for_session(session_id)
+
+    realtime = create_realtime_service(session_id)
+    screen_cache = get_screen_cache_for_session(session_id)
 
     async def on_server_event(event: dict):
+
         """处理阿里云返回的事件，转发给前端"""
         event_type = event.get("type", "")
 
@@ -111,8 +123,10 @@ async def realtime_session(websocket: WebSocket):
     try:
         while True:
             raw = await websocket.receive_text()
+            touch_session(session_id)
             msg = json.loads(raw)
             msg_type = msg.get("type", "")
+
 
             if msg_type == "control":
                 action = msg.get("action", "")

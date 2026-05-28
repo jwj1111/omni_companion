@@ -3,7 +3,7 @@
     <!-- 顶部栏 -->
     <header class="app-header">
       <div class="header-left">
-        <div class="app-logo-mark">O</div>
+        <img class="app-logo" :src="logoUrl" alt="" width="50" height="24" aria-hidden="true" />
         <h1 class="app-title">Omni Companion</h1>
       </div>
       <button class="btn-settings" @click="showSettings = true" aria-label="设置">
@@ -36,6 +36,7 @@ import { ref, provide, onMounted } from 'vue'
 import ScreenMonitor from '@/components/ScreenMonitor.vue'
 import SettingsModal from '@/components/SettingsModal.vue'
 import { clearChatHistory, resetRuntimeSettings } from '@/services/api'
+import logoUrl from '@/assets/brand/logo.png'
 
 const showSettings = ref(false)
 const screenMonitorRef = ref(null)
@@ -77,18 +78,12 @@ provide('screenMonitor', screenMonitorRef)
   gap: 10px;
 }
 
-.app-logo-mark {
-  width: 24px;
+.app-logo {
+  width: 50px;
   height: 24px;
-  border-radius: 5px;
-  background: var(--accent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  font-weight: 700;
-  color: #fff;
-  letter-spacing: -0.5px;
+  object-fit: contain;
+  display: block;
+  flex-shrink: 0;
 }
 
 .app-title {

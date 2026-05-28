@@ -1,7 +1,20 @@
 /**
  * 后端 API 服务
  */
+import { getSessionId } from './session'
+
 const BASE_URL = 'http://localhost:8000'
+
+function sessionHeaders(extra = {}) {
+  return {
+    'X-Session-Id': getSessionId(),
+    ...extra,
+  }
+}
+
+function jsonHeaders() {
+  return sessionHeaders({ 'Content-Type': 'application/json' })
+}
 
 /**
  * 发送聊天消息（流式返回）
@@ -12,7 +25,7 @@ const BASE_URL = 'http://localhost:8000'
 export async function sendChatMessage(content, outputAudio, onChunk) {
   const resp = await fetch(`${BASE_URL}/api/chat/send`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: jsonHeaders(),
     body: JSON.stringify({ content, output_audio: outputAudio }),
   })
 
@@ -45,7 +58,9 @@ export async function sendChatMessage(content, outputAudio, onChunk) {
  * 获取对话历史
  */
 export async function getChatHistory() {
-  const resp = await fetch(`${BASE_URL}/api/chat/history`)
+  const resp = await fetch(`${BASE_URL}/api/chat/history`, {
+    headers: sessionHeaders(),
+  })
   return resp.json()
 }
 
@@ -53,7 +68,10 @@ export async function getChatHistory() {
  * 清空对话历史
  */
 export async function clearChatHistory() {
-  const resp = await fetch(`${BASE_URL}/api/chat/clear`, { method: 'POST' })
+  const resp = await fetch(`${BASE_URL}/api/chat/clear`, {
+    method: 'POST',
+    headers: sessionHeaders(),
+  })
   return resp.json()
 }
 
@@ -61,7 +79,9 @@ export async function clearChatHistory() {
  * 获取所有设置
  */
 export async function getSettings() {
-  const resp = await fetch(`${BASE_URL}/api/settings/all`)
+  const resp = await fetch(`${BASE_URL}/api/settings/all`, {
+    headers: sessionHeaders(),
+  })
   return resp.json()
 }
 
@@ -69,16 +89,20 @@ export async function getSettings() {
  * 恢复默认运行期设置
  */
 export async function resetRuntimeSettings() {
-  const resp = await fetch(`${BASE_URL}/api/settings/reset-runtime`, { method: 'POST' })
+  const resp = await fetch(`${BASE_URL}/api/settings/reset-runtime`, {
+    method: 'POST',
+    headers: sessionHeaders(),
+  })
   return resp.json()
 }
 
 /**
  * 获取音色列表
  */
-
 export async function getVoices() {
-  const resp = await fetch(`${BASE_URL}/api/settings/voices`)
+  const resp = await fetch(`${BASE_URL}/api/settings/voices`, {
+    headers: sessionHeaders(),
+  })
   return resp.json()
 }
 
@@ -86,7 +110,9 @@ export async function getVoices() {
  * 获取行为规范 prompt
  */
 export async function getRules() {
-  const resp = await fetch(`${BASE_URL}/api/settings/rules`)
+  const resp = await fetch(`${BASE_URL}/api/settings/rules`, {
+    headers: sessionHeaders(),
+  })
   return resp.json()
 }
 
@@ -96,7 +122,7 @@ export async function getRules() {
 export async function updateRules(content) {
   const resp = await fetch(`${BASE_URL}/api/settings/rules`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: jsonHeaders(),
     body: JSON.stringify({ content }),
   })
   return resp.json()
@@ -108,7 +134,7 @@ export async function updateRules(content) {
 export async function updateSettings(settings) {
   const resp = await fetch(`${BASE_URL}/api/settings/update`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: jsonHeaders(),
     body: JSON.stringify({ settings }),
   })
   return resp.json()
@@ -120,7 +146,7 @@ export async function updateSettings(settings) {
 export async function updateEnv(key, value) {
   const resp = await fetch(`${BASE_URL}/api/settings/env`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: jsonHeaders(),
     body: JSON.stringify({ key, value }),
   })
   return resp.json()
@@ -132,7 +158,7 @@ export async function updateEnv(key, value) {
 export async function updatePersona(personaId, data) {
   const resp = await fetch(`${BASE_URL}/api/settings/persona/${personaId}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: jsonHeaders(),
     body: JSON.stringify(data),
   })
   return resp.json()
@@ -144,7 +170,7 @@ export async function updatePersona(personaId, data) {
 export async function uploadScreenshot(imageB64) {
   const resp = await fetch(`${BASE_URL}/api/screenshot`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: jsonHeaders(),
     body: JSON.stringify({ image_b64: imageB64 }),
   })
   return resp.json()

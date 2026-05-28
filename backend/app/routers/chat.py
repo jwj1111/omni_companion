@@ -9,7 +9,8 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from app.dependencies import get_chat_service, get_config_manager
+from app.dependencies import get_chat_service, get_request_config_manager
+
 
 router = APIRouter()
 
@@ -26,8 +27,9 @@ class SendMessageRequest(BaseModel):
 async def send_message(
     req: SendMessageRequest,
     chat_service=Depends(get_chat_service),
-    config_manager=Depends(get_config_manager),
+    config_manager=Depends(get_request_config_manager),
 ):
+
     """
     发送消息并通过 SSE 流式返回回复
     返回格式：每行一个 JSON，type 为 text/audio/done/error

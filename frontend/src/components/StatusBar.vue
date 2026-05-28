@@ -1,10 +1,14 @@
 <template>
   <div class="status-bar">
-    <span class="connection-status">
-      <span class="dot" :class="connectionClass"></span>
-      {{ connectionText }}
-    </span>
-    <span class="model-info">{{ currentModel }}</span>
+    <div class="status-left">
+      <span class="connection-status">
+        <span class="dot" :class="connectionState"></span>
+        <span class="mono">{{ connectionText }}</span>
+      </span>
+    </div>
+    <div class="status-right">
+      <span class="mono text-muted">{{ currentModel }}</span>
+    </div>
   </div>
 </template>
 
@@ -14,7 +18,6 @@ import { computed, ref } from 'vue'
 const connectionState = ref('disconnected') // disconnected | connecting | connected
 const currentModel = ref('qwen3.5-omni-plus')
 
-const connectionClass = computed(() => connectionState.value)
 const connectionText = computed(() => {
   const map = { disconnected: '未连接', connecting: '连接中...', connected: '已连接' }
   return map[connectionState.value]
@@ -26,6 +29,13 @@ const connectionText = computed(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  font-size: 11px;
+}
+
+.status-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .connection-status {
@@ -35,16 +45,18 @@ const connectionText = computed(() => {
 }
 
 .dot {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
+  transition: background var(--transition-normal);
 }
 
-.dot.disconnected { background: #f44336; }
-.dot.connecting { background: #ff9800; }
-.dot.connected { background: #4caf50; }
+.dot.disconnected { background: var(--text-muted); }
+.dot.connecting { background: var(--warning); animation: pulse 1.5s infinite; }
+.dot.connected { background: var(--success); }
 
-.model-info {
-  color: #999;
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
 </style>

@@ -1,10 +1,13 @@
 <template>
   <div class="screen-monitor-container">
     <div class="monitor-header">
-      <span>屏幕监控</span>
-      <span class="status-dot" :class="{ active: isCapturing }"></span>
-      <button v-if="!isCapturing" @click="startCapture">开始采集</button>
-      <button v-else @click="stopCapture">停止采集</button>
+      <div class="header-info">
+        <span class="dot" :class="{ active: isCapturing }"></span>
+        <span class="label">屏幕监控</span>
+      </div>
+      <button class="btn-capture" @click="isCapturing ? stopCapture() : startCapture()">
+        {{ isCapturing ? '停止' : '开始采集' }}
+      </button>
     </div>
     <div class="monitor-preview">
       <video
@@ -15,7 +18,12 @@
         playsinline
       ></video>
       <canvas ref="canvasRef" style="display: none;"></canvas>
-      <p v-if="!isCapturing" class="placeholder">点击"开始采集"共享屏幕画面</p>
+      <div v-if="!isCapturing" class="placeholder">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3">
+          <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+        </svg>
+        <p>点击"开始采集"共享游戏画面</p>
+      </div>
     </div>
   </div>
 </template>
@@ -30,34 +38,23 @@ const canvasRef = ref(null)
 let mediaStream = null
 let frameInterval = null
 
-/**
- * 开始屏幕采集
- * 使用 getDisplayMedia 让用户选择共享的屏幕/窗口
- */
 async function startCapture() {
   try {
     mediaStream = await navigator.mediaDevices.getDisplayMedia({
-      video: { frameRate: { max: 5 } },
+      video: true,  // 不限帧率，预览丝滑；抽帧频率由定时器另外控制
       audio: false
     })
     videoRef.value.srcObject = mediaStream
     isCapturing.value = true
 
-    // 监听用户手动停止共享
     mediaStream.getVideoTracks()[0].addEventListener('ended', () => {
       stopCapture()
     })
-
-    // TODO: 按配置频率抽帧并上传后端
-    // frameInterval = setInterval(() => captureFrame(), intervalMs)
   } catch (err) {
     console.error('屏幕采集失败:', err)
   }
 }
 
-/**
- * 停止屏幕采集
- */
 function stopCapture() {
   if (mediaStream) {
     mediaStream.getTracks().forEach(track => track.stop())
@@ -75,7 +72,6 @@ function stopCapture() {
 
 /**
  * 从视频流抽取一帧，转为 JPEG base64
- * TODO: 调用后端上传接口或通过 WebSocket 发送
  */
 function captureFrame() {
   if (!videoRef.value || !canvasRef.value) return null
@@ -85,7 +81,6 @@ function captureFrame() {
   canvas.height = video.videoHeight
   const ctx = canvas.getContext('2d')
   ctx.drawImage(video, 0, 0)
-  // 输出 JPEG base64（去掉 data:image/jpeg;base64, 前缀）
   const dataUrl = canvas.toDataURL('image/jpeg', 0.7)
   return dataUrl.split(',')[1]
 }
@@ -94,7 +89,6 @@ onBeforeUnmount(() => {
   stopCapture()
 })
 
-// 暴露给父组件使用
 defineExpose({ captureFrame, isCapturing })
 </script>
 
@@ -106,30 +100,48 @@ defineExpose({ captureFrame, isCapturing })
 }
 
 .monitor-header {
-  padding: 8px 12px;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+}
+
+.header-info {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
 }
 
-.monitor-header button {
-  margin-left: auto;
-  padding: 4px 10px;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.status-dot {
+.dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #ccc;
+  background: var(--text-muted);
+  transition: background var(--transition-normal);
 }
 
-.status-dot.active {
-  background: #4caf50;
+.dot.active {
+  background: var(--success);
+  box-shadow: 0 0 6px var(--success);
+}
+
+.btn-capture {
+  padding: 5px 12px;
+  font-size: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  transition: all var(--transition-fast);
+}
+
+.btn-capture:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent);
+  color: var(--accent-light);
 }
 
 .monitor-preview {
@@ -137,7 +149,7 @@ defineExpose({ captureFrame, isCapturing })
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #1a1a1a;
+  background: #000;
   overflow: hidden;
 }
 
@@ -148,6 +160,11 @@ defineExpose({ captureFrame, isCapturing })
 }
 
 .placeholder {
-  color: #666;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-muted);
+  font-size: 13px;
 }
 </style>

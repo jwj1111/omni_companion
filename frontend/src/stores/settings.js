@@ -1,24 +1,20 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { getSettings } from '@/services/api'
 
-/**
- * 全局设置状态
- */
 export const useSettingsStore = defineStore('settings', () => {
   const settings = ref(null)
-  const currentPersona = ref(null)
+  const loaded = ref(false)
 
-  async function loadSettings() {
-    // TODO: 从后端 GET /api/settings/all 加载
+  async function load() {
+    try {
+      const data = await getSettings()
+      settings.value = data
+      loaded.value = true
+    } catch (e) {
+      console.error('加载设置失败:', e)
+    }
   }
 
-  async function saveSettings(data) {
-    // TODO: PUT /api/settings/update
-  }
-
-  async function loadPersonas() {
-    // TODO: GET /api/settings/personas
-  }
-
-  return { settings, currentPersona, loadSettings, saveSettings, loadPersonas }
+  return { settings, loaded, load }
 })

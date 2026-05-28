@@ -32,8 +32,10 @@ defineProps({
   padding: 10px 16px;
   text-decoration: none;
   color: var(--text-muted);
-  font-size: 12px;
-  letter-spacing: 0.3px;
+  font-size: var(--type-label);
+  font-weight: 500;
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-label);
   transition: color var(--transition-fast);
 }
 

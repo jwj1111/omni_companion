@@ -87,10 +87,11 @@ provide('screenMonitor', screenMonitorRef)
 }
 
 .app-title {
-  font-size: 14px;
-  font-weight: 500;
+  font-size: var(--type-title);
+  font-weight: 600;
+  line-height: var(--leading-tight);
   color: var(--text-secondary);
-  letter-spacing: 0.3px;
+  letter-spacing: var(--tracking-label);
 }
 
 .btn-settings {

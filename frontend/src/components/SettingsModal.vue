@@ -306,9 +306,11 @@ async function save() {
 }
 
 .settings-header h2 {
-  font-size: 14px;
-  font-weight: 500;
+  font-size: var(--type-title);
+  font-weight: 600;
+  line-height: var(--leading-tight);
   color: var(--text-secondary);
+  letter-spacing: var(--tracking-label);
 }
 
 .btn-close {
@@ -333,7 +335,10 @@ async function save() {
 .settings-nav button {
   padding: 8px 12px;
   border-radius: 0;
-  font-size: 12px;
+  font-size: var(--type-label);
+  font-weight: 500;
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-label);
   color: var(--text-muted);
   transition: all var(--transition-fast);
   border-bottom: 2px solid transparent;
@@ -373,8 +378,10 @@ async function save() {
 }
 
 .form-group label {
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--type-label);
+  font-weight: 600;
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-label);
   color: var(--text-secondary);
 }
 
@@ -401,7 +408,8 @@ async function save() {
 }
 
 .hint {
-  font-size: 11px;
+  font-size: var(--type-caption);
+  line-height: var(--leading-body);
   color: var(--text-muted);
 }
 
@@ -414,7 +422,8 @@ async function save() {
 
 .settings-toast {
   padding: 8px 20px;
-  font-size: 12px;
+  font-size: var(--type-label);
+  line-height: var(--leading-body);
   text-align: center;
   animation: fadeIn 0.2s ease-out;
 }
@@ -439,8 +448,10 @@ async function save() {
   background: var(--accent);
   color: #fff;
   border-radius: var(--radius-sm);
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--type-label);
+  font-weight: 600;
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-label);
   transition: all var(--transition-fast);
 }
 
@@ -454,9 +465,9 @@ async function save() {
 }
 
 .rules-textarea {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  line-height: 1.6;
+  font-family: var(--font-main);
+  font-size: var(--type-body);
+  line-height: var(--leading-chat);
   min-height: 300px;
   resize: vertical;
 }

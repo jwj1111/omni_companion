@@ -445,12 +445,14 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--type-label);
+  line-height: var(--leading-body);
 }
 
 .transcript-item {
-  font-size: 13px;
-  line-height: 1.7;
+  font-size: var(--type-chat);
+  line-height: var(--leading-chat);
+  font-weight: 400;
   padding: 4px 0;
   animation: msg-in 0.15s ease-out;
 }
@@ -461,11 +463,11 @@ onBeforeUnmount(() => {
 }
 
 .transcript-role {
-  font-weight: 500;
+  font-weight: 600;
   margin-right: 6px;
-  font-size: 11px;
+  font-size: var(--type-caption);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: var(--tracking-label);
 }
 
 .transcript-item.user .transcript-role {
@@ -506,9 +508,10 @@ onBeforeUnmount(() => {
 }
 
 .status-text {
-  font-size: 11px;
+  font-size: var(--type-caption);
+  line-height: 1;
   color: var(--text-muted);
-  letter-spacing: 0.2px;
+  letter-spacing: var(--tracking-label);
 }
 
 /* 控制区域 */
@@ -559,7 +562,9 @@ onBeforeUnmount(() => {
 }
 
 .control-hint {
-  font-size: 11px;
+  font-size: var(--type-caption);
+  line-height: var(--leading-tight);
   color: var(--text-muted);
+  letter-spacing: var(--tracking-label);
 }
 </style>

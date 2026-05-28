@@ -129,10 +129,13 @@ defineExpose({ captureFrame, isCapturing })
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--type-label);
+  font-weight: 500;
+  line-height: var(--leading-tight);
   color: var(--text-secondary);
-  letter-spacing: 0.2px;
+  letter-spacing: var(--tracking-label);
 }
+
 
 .dot {
   width: 6px;
@@ -149,14 +152,17 @@ defineExpose({ captureFrame, isCapturing })
 
 .btn-capture {
   padding: 4px 10px;
-  font-size: 11px;
+  font-size: var(--type-caption);
+  font-weight: 600;
+  line-height: 1;
   border-radius: var(--radius-xs);
   background: transparent;
   border: 1px solid var(--border-light);
   color: var(--text-secondary);
   transition: all var(--transition-fast);
-  letter-spacing: 0.2px;
+  letter-spacing: var(--tracking-label);
 }
+
 
 .btn-capture:hover:not(:disabled) {
   background: var(--accent-subtle);
@@ -191,15 +197,16 @@ defineExpose({ captureFrame, isCapturing })
   align-items: center;
   gap: 16px;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--type-label);
   opacity: 0.7;
 }
 
 .placeholder p {
   max-width: 200px;
   text-align: center;
-  line-height: 1.5;
+  line-height: var(--leading-body);
 }
+
 
 .placeholder .error-text {
   color: var(--error);

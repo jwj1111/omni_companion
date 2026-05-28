@@ -51,8 +51,18 @@
   /* 字体 */
   --font-main: "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+  --type-caption: 0.6875rem;  /* 11px */
+  --type-label: 0.75rem;      /* 12px */
+  --type-body: 0.875rem;      /* 14px */
+  --type-chat: 0.875rem;      /* 14px */
+  --type-title: 0.9375rem;    /* 15px */
+  --leading-tight: 1.25;
+  --leading-body: 1.55;
+  --leading-chat: 1.68;
+  --tracking-label: 0.02em;
 
   /* 动画 */
+
   --transition-fast: 0.12s ease-out;
   --transition-normal: 0.2s ease-out;
   --transition-slow: 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -80,13 +90,16 @@ html, body {
 
 body {
   font-family: var(--font-main);
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: var(--type-body);
+  line-height: var(--leading-body);
   color: var(--text-primary);
   background: var(--bg-deepest);
+  font-kerning: normal;
+  text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
 
 #app {
   height: 100%;
@@ -138,9 +151,11 @@ button:focus-visible {
 
 input, textarea, select {
   font-family: inherit;
-  font-size: inherit;
+  font-size: var(--type-body);
+  line-height: var(--leading-body);
   color: var(--text-primary);
   background: var(--bg-card);
+
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
   padding: var(--space-sm) var(--space-md);

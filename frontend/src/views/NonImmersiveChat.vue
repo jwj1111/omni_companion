@@ -203,7 +203,8 @@ watch(() => chatStore.messages.length, scrollToBottom)
   align-items: center;
   justify-content: center;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--type-label);
+  line-height: var(--leading-body);
 }
 
 .message-item {
@@ -230,8 +231,10 @@ watch(() => chatStore.messages.length, scrollToBottom)
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--type-caption);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: var(--tracking-label);
   flex-shrink: 0;
 }
 
@@ -248,8 +251,9 @@ watch(() => chatStore.messages.length, scrollToBottom)
 
 .message-bubble {
   padding: 10px 14px;
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: var(--type-chat);
+  line-height: var(--leading-chat);
+  font-weight: 400;
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -279,8 +283,9 @@ watch(() => chatStore.messages.length, scrollToBottom)
   background: var(--bg-deepest);
   border: 1px solid var(--border-light);
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--type-caption);
   line-height: 1;
+  letter-spacing: var(--tracking-label);
 }
 
 .message-attachment img {
@@ -295,7 +300,9 @@ watch(() => chatStore.messages.length, scrollToBottom)
 .btn-play-audio {
   margin-top: 8px;
   padding: 4px 10px;
-  font-size: 11px;
+  font-size: var(--type-caption);
+  line-height: 1;
+  letter-spacing: var(--tracking-label);
   border-radius: var(--radius-xs);
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -340,7 +347,9 @@ watch(() => chatStore.messages.length, scrollToBottom)
   border-radius: 50%;
   background: var(--error);
   color: #fff;
-  font-size: 12px;
+  font-size: var(--type-label);
+  font-weight: 600;
+  line-height: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -361,8 +370,8 @@ watch(() => chatStore.messages.length, scrollToBottom)
   background: var(--bg-card);
   border: 1px solid var(--border);
   color: var(--text-primary);
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: var(--type-chat);
+  line-height: var(--leading-body);
 }
 
 .btn-attach,

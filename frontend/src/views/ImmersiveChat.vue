@@ -49,7 +49,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onBeforeUnmount, inject } from 'vue'
+import { ref, nextTick, onBeforeUnmount, inject } from 'vue'
 import ChatModeTabs from '@/components/ChatModeTabs.vue'
 import { RealtimeService } from '@/services/realtime'
 import { MicRecorder, AudioPlayer, stopAllAudio } from '@/services/audio'
@@ -68,7 +68,7 @@ let micRecorder = null
 let audioPlayer = null
 let volumeInterval = null
 let screenshotInterval = null
-let currentUserText = ''
+let screenshotPushActive = false  // 是否允许推送截图（仅用户说话时为 true）
 let currentAssistantText = ''
 
 function toggleSession() {
@@ -76,6 +76,50 @@ function toggleSession() {
     stopSession()
   } else {
     startSession()
+  }
+}
+
+/**
+ * 启动截屏推送定时器
+ * 定时器启动后常驻，内部动态检测屏幕监控状态和 screenshotPushActive 标志
+ * 支持中途开启/关闭屏幕监控
+ */
+function startScreenshotPush() {
+  if (screenshotInterval) return
+
+  const intervalMs = 1000
+  screenshotInterval = setInterval(() => {
+    if (!screenshotPushActive) return
+    if (!screenMonitor.value?.isCapturing) return
+    if (!realtimeService?.isConnected) return
+    const frame = screenMonitor.value.captureFrame()
+    if (frame) {
+      realtimeService.sendScreenshot(frame)
+    }
+  }, intervalMs)
+}
+
+/**
+ * 连接就绪后启动麦克风和截屏推送
+ */
+async function startMicAndScreenshot() {
+  try {
+    await micRecorder.start((audioB64) => {
+      realtimeService.sendAudio(audioB64)
+    })
+    isActive.value = true
+    statusText.value = '聆听中...'
+
+    // 启动截屏推送定时器（实际推送由 screenshotPushActive 门控）
+    startScreenshotPush()
+
+    // 音量检测
+    volumeInterval = setInterval(() => {
+      volumePercent.value = Math.round(micRecorder.getVolume() * 100)
+    }, 100)
+  } catch (e) {
+    statusText.value = '麦克风权限被拒绝'
+    realtimeService.disconnect()
   }
 }
 
@@ -88,39 +132,9 @@ async function startSession() {
   audioPlayer = new AudioPlayer()
   isDisconnected.value = false
 
-  // 连接 WebSocket
+  // 连接 WebSocket（等收到 connected 事件后再启动麦克风）
   realtimeService.connect(handleEvent)
   statusText.value = '连接中...'
-
-  // 启动麦克风
-  try {
-    await micRecorder.start((audioB64) => {
-      realtimeService.sendAudio(audioB64)
-    })
-    isActive.value = true
-    statusText.value = '聆听中...'
-
-    // 音量检测
-    volumeInterval = setInterval(() => {
-      volumePercent.value = Math.round(micRecorder.getVolume() * 100)
-    }, 100)
-
-    // 截屏持续推送（如果屏幕监控已开启）
-    if (screenMonitor.value?.isCapturing) {
-      const intervalMs = 1000 // TODO: 从 settings 读取
-      screenshotInterval = setInterval(() => {
-        if (screenMonitor.value?.isCapturing && realtimeService?.isConnected) {
-          const frame = screenMonitor.value.captureFrame()
-          if (frame) {
-            realtimeService.sendScreenshot(frame)
-          }
-        }
-      }, intervalMs)
-    }
-  } catch (e) {
-    statusText.value = '麦克风权限被拒绝'
-    realtimeService.disconnect()
-  }
 }
 
 function stopSession() {
@@ -144,22 +158,40 @@ function stopSession() {
     clearInterval(screenshotInterval)
     screenshotInterval = null
   }
+  screenshotPushActive = false
   isActive.value = false
   volumePercent.value = 0
   statusText.value = ''
+}
+
+/**
+ * 结束当前未完成的助手转写条目
+ * 打断时调用：如果内容太短（碎片），直接移除；否则标记为完成
+ */
+function finalizeStreamingTranscript() {
+  if (!currentAssistantText) return
+  const last = transcripts.value[transcripts.value.length - 1]
+  if (last && last.role === 'assistant' && last.streaming) {
+    if (currentAssistantText.length <= 2) {
+      // 碎片（如"还是"），直接移除
+      transcripts.value.pop()
+    } else {
+      last.streaming = false
+    }
+  }
+  currentAssistantText = ''
 }
 
 function handleEvent(event) {
   const { type } = event
 
   if (type === 'audio') {
-    // 模型音频 → 播放
-    audioPlayer.addChunk(event.data)
+    // 模型音频 → 边收边播（官方方式2）
+    audioPlayer.write(event.data)
   } else if (type === 'transcript') {
     if (event.role === 'user') {
       if (event.final) {
         transcripts.value.push({ role: 'user', text: event.text })
-        currentUserText = ''
         scrollToBottom()
       }
     } else if (event.role === 'assistant') {
@@ -188,11 +220,21 @@ function handleEvent(event) {
     }
   } else if (type === 'status') {
     if (event.event === 'connected') {
-      statusText.value = '聆听中...'
+      // WebSocket 已连接且阿里云会话已建立，现在启动麦克风
+      startMicAndScreenshot()
     } else if (event.event === 'disconnected') {
       isActive.value = false
       isDisconnected.value = true
       statusText.value = '连接已断开'
+      screenshotPushActive = false
+      if (audioPlayer) {
+        audioPlayer.stop()
+        audioPlayer = null
+      }
+      if (screenshotInterval) {
+        clearInterval(screenshotInterval)
+        screenshotInterval = null
+      }
       if (micRecorder) {
         micRecorder.stop()
         micRecorder = null
@@ -203,9 +245,13 @@ function handleEvent(event) {
       }
     } else if (event.event === 'input_audio_buffer.speech_started') {
       statusText.value = '说话中...'
+      screenshotPushActive = true  // 用户开始说话，允许推截图
+      if (audioPlayer) audioPlayer.flush()  // 打断：清空播放缓冲（不销毁）
+      // 打断时清理未完成的助手转写
+      finalizeStreamingTranscript()
     } else if (event.event === 'input_audio_buffer.speech_stopped') {
       statusText.value = '思考中...'
-      currentAssistantText = ''
+      screenshotPushActive = false  // 用户停止说话，暂停推截图（防止 image before audio）
     } else if (event.event === 'response.done') {
       statusText.value = '聆听中...'
     }

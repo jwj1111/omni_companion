@@ -23,7 +23,7 @@
           <button
             v-if="msg.audioData && !msg.isStreaming"
             class="btn-play-audio"
-            @click="playPcmAudio(msg.audioData)"
+            @click="handlePlayAudio(msg.audioData)"
           >
             🔊 播放语音
           </button>
@@ -75,6 +75,11 @@ import ChatModeTabs from '@/components/ChatModeTabs.vue'
 const chatStore = useChatStore()
 const messages = computed(() => chatStore.messages)
 
+function handlePlayAudio(audioB64) {
+  chatStore.stopCurrentAudio()
+  playPcmAudio(audioB64)
+}
+
 const screenMonitor = inject('screenMonitor')
 
 const inputText = ref('')
@@ -115,12 +120,6 @@ async function handleSend() {
 
   await chatStore.send(content, true)
   scrollToBottom()
-
-  // 自动播放音频
-  const lastMsg = chatStore.messages[chatStore.messages.length - 1]
-  if (lastMsg?.audioData) {
-    playPcmAudio(lastMsg.audioData)
-  }
 }
 
 function attachScreenshot() {

@@ -87,82 +87,129 @@ export class MicRecorder {
 }
 
 /**
- * 音频播放器（PCM 24kHz 16bit mono）
- * 使用精确时间调度避免卡顿
+ * PCM 流式播放器（24kHz 16bit mono）
+ * 模仿 pyaudio 的 stream.write() 方式：
+ * 每收到一个 chunk 就解码写入缓冲区，底层连续播放
  */
-export class AudioPlayer {
+export class PcmStreamPlayer {
   constructor() {
     this.audioContext = null
     this.nextStartTime = 0
+    this.stopped = false
   }
 
+  /**
+   * 初始化（必须在用户交互事件中调用）
+   */
   init() {
     if (!this.audioContext) {
       this.audioContext = new AudioContext({ sampleRate: 24000 })
       this.nextStartTime = 0
     }
-    // 浏览器自动播放策略可能挂起 AudioContext，强制恢复
     if (this.audioContext.state === 'suspended') {
       this.audioContext.resume()
     }
+    registerStreamPlayer(this)
   }
 
   /**
-   * 添加音频数据并立即排队播放（无缝衔接）
-   * @param {string} audioB64 - Base64 编码的 16bit PCM
+   * 写入一个 audio chunk 并立即排队播放
+   * 等同于 pyaudio 的 stream.write(pcm_bytes)
+   * @param {string} audioB64 - 单个 Base64 编码的 PCM chunk
    */
-  addChunk(audioB64) {
-    this.init()
+  write(audioB64) {
+    if (!audioB64 || this.stopped) return
+    if (!this.audioContext) this.init()
+
     const bytes = base64ToArrayBuffer(audioB64)
     const samples = bytes.byteLength / 2
-
     if (samples === 0) return
 
+    // 解码 PCM → float32
     const buffer = this.audioContext.createBuffer(1, samples, 24000)
     const channelData = buffer.getChannelData(0)
     const view = new DataView(bytes)
-
     for (let i = 0; i < samples; i++) {
       channelData[i] = view.getInt16(i * 2, true) / 32768
     }
 
+    // 排队播放（无缝衔接）
     const source = this.audioContext.createBufferSource()
     source.buffer = buffer
     source.connect(this.audioContext.destination)
 
-    // 精确排队：如果 nextStartTime 已过期，从当前时间开始
     const now = this.audioContext.currentTime
     if (this.nextStartTime < now) {
       this.nextStartTime = now
     }
-
     source.start(this.nextStartTime)
     this.nextStartTime += buffer.duration
   }
 
+  /**
+   * 清空播放缓冲（打断时使用）
+   * 关闭旧 context 以立刻静音，下次 write 时自动重新初始化
+   */
+  flush() {
+    unregisterStreamPlayer(this)
+    if (this.audioContext) {
+      this.audioContext.close()
+      this.audioContext = null
+    }
+    this.nextStartTime = 0
+    // 注意：不设 stopped=true，播放器仍可继续使用
+  }
+
+  /**
+   * 停止播放并释放资源（彻底销毁，不可复用）
+   */
   stop() {
+    this.stopped = true
+    unregisterStreamPlayer(this)
     if (this.audioContext) {
       this.audioContext.close()
       this.audioContext = null
     }
     this.nextStartTime = 0
   }
-
-  reset() {
-    this.nextStartTime = 0
-  }
 }
+
+// 保留旧名兼容沉浸模式
+export const AudioPlayer = PcmStreamPlayer
 
 // ==================== 全局播放管理器 ====================
 
 // 全局唯一，确保同时只有一个音频在播放
 let _activeContext = null
 let _activeSource = null
+let _activeStreamPlayer = null  // 当前活跃的流式播放器
+
+/**
+ * 注册当前活跃的流式播放器（内部使用）
+ */
+function registerStreamPlayer(player) {
+  _activeStreamPlayer = player
+}
+
+/**
+ * 注销流式播放器（内部使用）
+ */
+function unregisterStreamPlayer(player) {
+  if (_activeStreamPlayer === player) {
+    _activeStreamPlayer = null
+  }
+}
 
 /**
  * 停止当前正在播放的任何音频（切换模式或新播放时调用）
  */
 export function stopAllAudio() {
+  // 停掉流式播放器
+  if (_activeStreamPlayer) {
+    _activeStreamPlayer.stop()
+    _activeStreamPlayer = null
+  }
+  // 停掉一次性播放
   if (_activeSource) {
     try { _activeSource.stop() } catch (e) {}
     _activeSource = null

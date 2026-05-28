@@ -83,7 +83,6 @@ class OmniRealtimeService:
         - 格式转为 JPEG
         - Base64 编码后 ≤ 256KB
         - 分辨率不超过 720p
-        - 必须在发送过音频之后才能发送图片
         """
         from app.services.image_processor import process_image_from_b64, TargetAPI
 

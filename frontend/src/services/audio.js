@@ -259,9 +259,7 @@ export class PcmStreamPlayer {
   playFallback(samples) {
     if (!samples.length || !this.audioContext) return
 
-    const buffer = this.audioContext.createBuffer(1, samples.length, this.audioContext.sampleRate)
-    buffer.getChannelData(0).set(samples)
-
+    const buffer = createAudioBufferFromSamples(this.audioContext, samples)
     const source = this.audioContext.createBufferSource()
     source.buffer = buffer
     source.connect(this.audioContext.destination)
@@ -375,36 +373,36 @@ export function stopAllAudio() {
 export function playPcmAudio(audioB64) {
   if (!audioB64) return
 
-  // 停掉之前的播放
   stopAllAudio()
 
-  const bytes = base64ToArrayBuffer(audioB64)
-  const samples = bytes.byteLength / 2
-  if (samples === 0) return
+  const sourceSamples = decodeInt16PcmBytes(base64ToUint8Array(audioB64))
+  if (!sourceSamples.length) return
 
-  _activeContext = new AudioContext({ sampleRate: 24000 })
-  if (_activeContext.state === 'suspended') {
-    _activeContext.resume()
+  const context = new AudioContext({ sampleRate: PCM_SAMPLE_RATE })
+  if (context.state === 'suspended') {
+    context.resume()
   }
 
-  const buffer = _activeContext.createBuffer(1, samples, 24000)
-  const channelData = buffer.getChannelData(0)
-  const view = new DataView(bytes)
+  const outputSamples = context.sampleRate === PCM_SAMPLE_RATE
+    ? sourceSamples
+    : resampleLinear(sourceSamples, PCM_SAMPLE_RATE, context.sampleRate)
+  const buffer = createAudioBufferFromSamples(context, outputSamples)
+  const source = context.createBufferSource()
 
-  for (let i = 0; i < samples; i++) {
-    channelData[i] = view.getInt16(i * 2, true) / 32768
-  }
+  _activeContext = context
+  _activeSource = source
 
-  _activeSource = _activeContext.createBufferSource()
-  _activeSource.buffer = buffer
-  _activeSource.connect(_activeContext.destination)
-  _activeSource.start()
+  source.buffer = buffer
+  source.connect(context.destination)
+  source.start()
 
-  _activeSource.onended = () => {
-    _activeSource = null
-    if (_activeContext) {
-      _activeContext.close()
+  source.onended = () => {
+    if (_activeSource === source) {
+      _activeSource = null
+    }
+    if (_activeContext === context) {
       _activeContext = null
+      context.close()
     }
   }
 }
@@ -429,10 +427,6 @@ function arrayBufferToBase64(buffer) {
   return btoa(binary)
 }
 
-function base64ToArrayBuffer(base64) {
-  return base64ToUint8Array(base64).buffer
-}
-
 function base64ToUint8Array(base64) {
   const binary = atob(base64)
   const bytes = new Uint8Array(binary.length)
@@ -452,6 +446,12 @@ function decodeInt16PcmBytes(bytes) {
     output[i] = view.getInt16(i * 2, true) / 32768
   }
   return output
+}
+
+function createAudioBufferFromSamples(audioContext, samples) {
+  const buffer = audioContext.createBuffer(1, samples.length, audioContext.sampleRate)
+  buffer.getChannelData(0).set(samples)
+  return buffer
 }
 
 function resampleLinear(input, fromRate, toRate) {

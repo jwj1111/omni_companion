@@ -63,6 +63,11 @@
             <label>与用户关系</label>
             <textarea v-model="form.relationship" rows="2"></textarea>
           </div>
+          <div class="form-group">
+            <label>口癖（选填）</label>
+            <textarea v-model="form.quirks" rows="2" placeholder="例如常用语气词、习惯句式，可留空"></textarea>
+            <p class="hint">留空则不额外限制角色口癖</p>
+          </div>
         </div>
 
         <!-- 功能开关 -->
@@ -163,6 +168,7 @@ const form = ref({
   background: '',
   speakingStyle: '',
   relationship: '',
+  quirks: '',
   nonRealtimeSearch: false,
   realtimeSearch: false,
   outputAudio: true,
@@ -189,6 +195,7 @@ onMounted(async () => {
     form.value.background = persona?.background || ''
     form.value.speakingStyle = persona?.speaking_style || ''
     form.value.relationship = persona?.relationship || ''
+    form.value.quirks = persona?.quirks || ''
     form.value.nonRealtimeSearch = settings?.non_realtime?.enable_search || false
     form.value.realtimeSearch = settings?.realtime?.enable_search || false
     form.value.outputAudio = settings?.output?.modalities?.includes('audio') ?? true
@@ -220,6 +227,7 @@ async function save() {
       background: f.background,
       speaking_style: f.speakingStyle,
       relationship: f.relationship,
+      quirks: f.quirks,
     })
 
     // 3. 保存 settings

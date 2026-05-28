@@ -11,7 +11,7 @@ models:
   realtime: "qwen3.5-omni-plus-realtime"
 
 # ---------- 音色（后端读取，可被 persona 的 voice 字段覆盖） ----------
-voice: "Ethan"
+voice: "Tina"
 
 # ---------- 输出模态（后端读取） ----------
 output:

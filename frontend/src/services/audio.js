@@ -86,91 +86,238 @@ export class MicRecorder {
   }
 }
 
+const PCM_SAMPLE_RATE = 24000
+const WORKLET_URL = '/audio-worklet/pcm-player-processor.js'
+
 /**
  * PCM 流式播放器（24kHz 16bit mono）
- * 模仿 pyaudio 的 stream.write() 方式：
- * 每收到一个 chunk 就解码写入缓冲区，底层连续播放
+ * 使用 AudioWorklet 环形缓冲在音频线程连续拉取样本，避免每个 chunk 单独排程导致的断续感。
  */
 export class PcmStreamPlayer {
-  constructor() {
+  constructor({ sampleRate = PCM_SAMPLE_RATE, prebufferMs = 320 } = {}) {
+    this.sampleRate = sampleRate
+    this.prebufferMs = prebufferMs
     this.audioContext = null
-    this.nextStartTime = 0
+    this.node = null
+    this.readyPromise = null
+    this.pendingSamples = []
+    this.fallbackSources = []
+    this.base64Remainder = ''
+    this.byteRemainder = null
+    this.fallbackNextStartTime = 0
+    this.useFallback = false
     this.stopped = false
   }
 
   /**
-   * 初始化（必须在用户交互事件中调用）
+   * 初始化（必须尽量在用户交互事件中调用）
    */
   init() {
+    if (this.stopped) return this.readyPromise
+
     if (!this.audioContext) {
-      this.audioContext = new AudioContext({ sampleRate: 24000 })
-      this.nextStartTime = 0
+      this.audioContext = new AudioContext({ sampleRate: this.sampleRate })
+      this.readyPromise = this.setupWorklet()
     }
+
     if (this.audioContext.state === 'suspended') {
       this.audioContext.resume()
     }
+
     registerStreamPlayer(this)
+    return this.readyPromise
+  }
+
+  async setupWorklet() {
+    if (!this.audioContext?.audioWorklet) {
+      this.useFallback = true
+      return
+    }
+
+    try {
+      await this.audioContext.audioWorklet.addModule(WORKLET_URL)
+      if (this.stopped || !this.audioContext) return
+
+      this.node = new AudioWorkletNode(this.audioContext, 'pcm-player-processor', {
+        numberOfInputs: 0,
+        numberOfOutputs: 1,
+        outputChannelCount: [1],
+      })
+      this.node.connect(this.audioContext.destination)
+      this.node.port.postMessage({
+        type: 'config',
+        prebufferFrames: Math.round(this.audioContext.sampleRate * this.prebufferMs / 1000),
+      })
+
+      for (const samples of this.pendingSamples) {
+        this.postSamples(samples)
+      }
+      this.pendingSamples = []
+    } catch (e) {
+      this.useFallback = true
+      for (const samples of this.pendingSamples) {
+        this.playFallback(samples)
+      }
+      this.pendingSamples = []
+    }
   }
 
   /**
-   * 写入一个 audio chunk 并立即排队播放
-   * 等同于 pyaudio 的 stream.write(pcm_bytes)
-   * @param {string} audioB64 - 单个 Base64 编码的 PCM chunk
+   * 写入一个 audio chunk。
+   * @param {string} audioB64 - Base64 编码的 24kHz 16bit mono PCM 片段
    */
   write(audioB64) {
     if (!audioB64 || this.stopped) return
     if (!this.audioContext) this.init()
 
-    const bytes = base64ToArrayBuffer(audioB64)
-    const samples = bytes.byteLength / 2
-    if (samples === 0) return
+    const samples = this.decodePcmChunk(audioB64, false)
+    if (!samples.length) return
 
-    // 解码 PCM → float32
-    const buffer = this.audioContext.createBuffer(1, samples, 24000)
-    const channelData = buffer.getChannelData(0)
-    const view = new DataView(bytes)
-    for (let i = 0; i < samples; i++) {
-      channelData[i] = view.getInt16(i * 2, true) / 32768
+    const outputSamples = this.resampleForContext(samples)
+    if (this.useFallback) {
+      this.playFallback(outputSamples)
+    } else if (this.node) {
+      this.postSamples(outputSamples)
+    } else {
+      this.pendingSamples.push(outputSamples)
+    }
+  }
+
+  /**
+   * 解码流末尾可能残留的 Base64/PCM 字节。
+   */
+  finish() {
+    if (this.stopped) return
+    const samples = this.decodePcmChunk('', true)
+    if (!samples.length) return
+
+    const outputSamples = this.resampleForContext(samples)
+    if (this.useFallback) {
+      this.playFallback(outputSamples)
+    } else if (this.node) {
+      this.postSamples(outputSamples)
+    } else {
+      this.pendingSamples.push(outputSamples)
+    }
+  }
+
+  decodePcmChunk(audioB64, final) {
+    const cleaned = (audioB64 || '').replace(/\s/g, '')
+    let combined = this.base64Remainder + cleaned
+
+    if (!combined) return new Float32Array(0)
+
+    let decodeLength = combined.length - (combined.length % 4)
+    if (final && decodeLength !== combined.length) {
+      combined = combined.padEnd(Math.ceil(combined.length / 4) * 4, '=')
+      decodeLength = combined.length
     }
 
-    // 排队播放（无缝衔接）
+    if (decodeLength <= 0) {
+      this.base64Remainder = combined
+      return new Float32Array(0)
+    }
+
+    const part = combined.slice(0, decodeLength)
+    this.base64Remainder = final ? '' : combined.slice(decodeLength)
+
+    let bytes
+    try {
+      bytes = base64ToUint8Array(part)
+    } catch (e) {
+      this.base64Remainder = combined
+      return new Float32Array(0)
+    }
+
+    if (this.byteRemainder !== null) {
+      const merged = new Uint8Array(bytes.length + 1)
+      merged[0] = this.byteRemainder
+      merged.set(bytes, 1)
+      bytes = merged
+      this.byteRemainder = null
+    }
+
+    if (bytes.length % 2 === 1) {
+      this.byteRemainder = bytes[bytes.length - 1]
+      bytes = bytes.slice(0, -1)
+    }
+
+    return decodeInt16PcmBytes(bytes)
+  }
+
+  resampleForContext(samples) {
+    const contextRate = this.audioContext?.sampleRate || this.sampleRate
+    if (contextRate === this.sampleRate) return samples
+    return resampleLinear(samples, this.sampleRate, contextRate)
+  }
+
+  postSamples(samples) {
+    const transferable = samples.buffer.slice(samples.byteOffset, samples.byteOffset + samples.byteLength)
+    this.node.port.postMessage({ type: 'audio', samples: transferable }, [transferable])
+  }
+
+  playFallback(samples) {
+    if (!samples.length || !this.audioContext) return
+
+    const buffer = this.audioContext.createBuffer(1, samples.length, this.audioContext.sampleRate)
+    buffer.getChannelData(0).set(samples)
+
     const source = this.audioContext.createBufferSource()
     source.buffer = buffer
     source.connect(this.audioContext.destination)
 
     const now = this.audioContext.currentTime
-    if (this.nextStartTime < now) {
-      this.nextStartTime = now
+    if (this.fallbackNextStartTime < now + this.prebufferMs / 1000) {
+      this.fallbackNextStartTime = now + this.prebufferMs / 1000
     }
-    source.start(this.nextStartTime)
-    this.nextStartTime += buffer.duration
+    source.onended = () => {
+      const index = this.fallbackSources.indexOf(source)
+      if (index >= 0) this.fallbackSources.splice(index, 1)
+    }
+    this.fallbackSources.push(source)
+    source.start(this.fallbackNextStartTime)
+    this.fallbackNextStartTime += buffer.duration
   }
 
   /**
-   * 清空播放缓冲（打断时使用）
-   * 关闭旧 context 以立刻静音，下次 write 时自动重新初始化
+   * 清空播放缓冲（打断时使用），播放器仍可继续复用。
    */
   flush() {
-    unregisterStreamPlayer(this)
-    if (this.audioContext) {
-      this.audioContext.close()
-      this.audioContext = null
+    this.base64Remainder = ''
+    this.byteRemainder = null
+    this.pendingSamples = []
+    for (const source of this.fallbackSources) {
+      try { source.stop() } catch (e) {}
     }
-    this.nextStartTime = 0
-    // 注意：不设 stopped=true，播放器仍可继续使用
+    this.fallbackSources = []
+    this.fallbackNextStartTime = this.audioContext?.currentTime || 0
+    if (this.node) {
+      this.node.port.postMessage({ type: 'flush' })
+    }
   }
 
   /**
-   * 停止播放并释放资源（彻底销毁，不可复用）
+   * 停止播放并释放资源（彻底销毁，不可复用）。
    */
   stop() {
     this.stopped = true
     unregisterStreamPlayer(this)
+    this.pendingSamples = []
+    for (const source of this.fallbackSources) {
+      try { source.stop() } catch (e) {}
+    }
+    this.fallbackSources = []
+    this.base64Remainder = ''
+    this.byteRemainder = null
+    if (this.node) {
+      this.node.disconnect()
+      this.node = null
+    }
     if (this.audioContext) {
       this.audioContext.close()
       this.audioContext = null
     }
-    this.nextStartTime = 0
+    this.fallbackNextStartTime = 0
   }
 }
 
@@ -283,10 +430,46 @@ function arrayBufferToBase64(buffer) {
 }
 
 function base64ToArrayBuffer(base64) {
+  return base64ToUint8Array(base64).buffer
+}
+
+function base64ToUint8Array(base64) {
   const binary = atob(base64)
   const bytes = new Uint8Array(binary.length)
   for (let i = 0; i < binary.length; i++) {
     bytes[i] = binary.charCodeAt(i)
   }
-  return bytes.buffer
+  return bytes
 }
+
+function decodeInt16PcmBytes(bytes) {
+  const samples = bytes.byteLength / 2
+  if (samples === 0) return new Float32Array(0)
+
+  const output = new Float32Array(samples)
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  for (let i = 0; i < samples; i++) {
+    output[i] = view.getInt16(i * 2, true) / 32768
+  }
+  return output
+}
+
+function resampleLinear(input, fromRate, toRate) {
+  if (!input.length || fromRate === toRate) return input
+
+  const ratio = toRate / fromRate
+  const outputLength = Math.max(1, Math.round(input.length * ratio))
+  const output = new Float32Array(outputLength)
+
+  for (let i = 0; i < outputLength; i++) {
+    const sourceIndex = i / ratio
+    const index = Math.floor(sourceIndex)
+    const fraction = sourceIndex - index
+    const current = input[index] || 0
+    const next = input[Math.min(index + 1, input.length - 1)] || current
+    output[i] = current + (next - current) * fraction
+  }
+
+  return output
+}
+

@@ -1,11 +1,16 @@
 <template>
   <nav class="mode-tabs">
-    <router-link to="/chat" class="tab" :class="{ active: active === 'non-immersive' }">
-      <span class="tab-label">文字对话</span>
-    </router-link>
-    <router-link to="/immersive" class="tab" :class="{ active: active === 'immersive' }">
-      <span class="tab-label">语音对话</span>
-    </router-link>
+    <div class="tab-list">
+      <router-link to="/chat" class="tab" :class="{ active: active === 'non-immersive' }">
+        <span class="tab-label">文字对话</span>
+      </router-link>
+      <router-link to="/immersive" class="tab" :class="{ active: active === 'immersive' }">
+        <span class="tab-label">语音对话</span>
+      </router-link>
+    </div>
+    <div v-if="$slots.actions" class="tab-actions">
+      <slot name="actions" />
+    </div>
   </nav>
 </template>
 
@@ -18,10 +23,26 @@ defineProps({
 <style scoped>
 .mode-tabs {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 0 16px;
-  gap: 2px;
+  gap: 12px;
   background: var(--bg-panel);
   border-bottom: 1px solid var(--border);
+}
+
+.tab-list {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.tab-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
 }
 
 .tab {

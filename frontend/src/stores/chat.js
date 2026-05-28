@@ -57,9 +57,9 @@ export const useChatStore = defineStore('chat', () => {
     messages.value.push(assistantMsg)
     isLoading.value = true
 
-    // 在用户点击上下文中初始化流式播放器（官方方式2：边收边播）
+    // 在用户点击上下文中初始化流式播放器。非实时模式多留一点启动缓冲，优先保证自动播放连续性。
     if (outputAudio) {
-      currentPlayer = new PcmStreamPlayer()
+      currentPlayer = new PcmStreamPlayer({ prebufferMs: 450 })
       currentPlayer.init()
     }
 
@@ -69,11 +69,12 @@ export const useChatStore = defineStore('chat', () => {
           assistantMsg.content += chunk.data
         } else if (chunk.type === 'audio') {
           assistantMsg.audioData += chunk.data
-          // 官方方式2：每收到一个 chunk 立即解码播放
+          // 自动播放走 AudioWorklet 环形缓冲，减少 chunk 拼接导致的断续感。
           if (currentPlayer) {
             currentPlayer.write(chunk.data)
           }
         } else if (chunk.type === 'done') {
+          if (currentPlayer) currentPlayer.finish()
           assistantMsg.isStreaming = false
         } else if (chunk.type === 'error') {
           assistantMsg.content += `\n[错误: ${chunk.data}]`
@@ -89,6 +90,8 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   async function clear() {
+    stopCurrentAudio()
+    stopAllAudio()
     await clearChatHistory()
     messages.value = []
   }

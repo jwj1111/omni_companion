@@ -1,7 +1,19 @@
 <template>
   <div class="non-immersive-chat">
     <!-- 模式切换 Tab -->
-    <ChatModeTabs active="non-immersive" />
+    <ChatModeTabs active="non-immersive">
+      <template #actions>
+        <button
+          type="button"
+          class="btn-clear-session"
+          :class="{ confirm: confirmClear, error: clearFailed }"
+          :disabled="!canClearSession"
+          @click="handleClearSession"
+        >
+          {{ clearButtonText }}
+        </button>
+      </template>
+    </ChatModeTabs>
 
     <!-- 消息列表 -->
     <div class="message-list" ref="messageListRef" aria-live="polite" aria-label="消息列表">
@@ -77,7 +89,7 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick, watch, inject } from 'vue'
+import { ref, computed, nextTick, watch, inject, onBeforeUnmount } from 'vue'
 import { useChatStore } from '@/stores/chat'
 import { playPcmAudio } from '@/services/audio'
 import { getSettings } from '@/services/api'
@@ -97,10 +109,73 @@ const inputText = ref('')
 const attachedImage = ref(null)
 const messageListRef = ref(null)
 const inputRef = ref(null)
+const confirmClear = ref(false)
+const isClearing = ref(false)
+const clearFailed = ref(false)
+let clearConfirmTimer = null
+let clearFailedTimer = null
 
 const canSend = computed(() => {
   return (inputText.value.trim() || attachedImage.value) && !chatStore.isLoading
 })
+
+const canClearSession = computed(() => {
+  return messages.value.length > 0 && !chatStore.isLoading && !isClearing.value
+})
+
+const clearButtonText = computed(() => {
+  if (isClearing.value) return '清空中'
+  if (clearFailed.value) return '清空失败'
+  return confirmClear.value ? '确认清空' : '清空会话'
+})
+
+function resetClearConfirm() {
+  confirmClear.value = false
+  if (clearConfirmTimer) {
+    clearTimeout(clearConfirmTimer)
+    clearConfirmTimer = null
+  }
+}
+
+function resetClearFailed() {
+  clearFailed.value = false
+  if (clearFailedTimer) {
+    clearTimeout(clearFailedTimer)
+    clearFailedTimer = null
+  }
+}
+
+function armClearConfirm() {
+  clearFailed.value = false
+  confirmClear.value = true
+  if (clearConfirmTimer) clearTimeout(clearConfirmTimer)
+  clearConfirmTimer = setTimeout(resetClearConfirm, 3000)
+}
+
+function showClearFailed() {
+  clearFailed.value = true
+  if (clearFailedTimer) clearTimeout(clearFailedTimer)
+  clearFailedTimer = setTimeout(resetClearFailed, 2400)
+}
+
+async function handleClearSession() {
+  if (!canClearSession.value) return
+  if (!confirmClear.value) {
+    armClearConfirm()
+    return
+  }
+
+  resetClearConfirm()
+  isClearing.value = true
+  try {
+    await chatStore.clear()
+    scrollToBottom()
+  } catch (e) {
+    showClearFailed()
+  } finally {
+    isClearing.value = false
+  }
+}
 
 async function handleSend() {
   if (!canSend.value) return
@@ -183,6 +258,11 @@ function resetTextareaHeight() {
 
 // 自动滚动
 watch(() => chatStore.messages.length, scrollToBottom)
+
+onBeforeUnmount(() => {
+  resetClearConfirm()
+  resetClearFailed()
+})
 </script>
 
 <style scoped>
@@ -190,6 +270,39 @@ watch(() => chatStore.messages.length, scrollToBottom)
   display: flex;
   flex-direction: column;
   height: 100%;
+}
+
+.btn-clear-session {
+  padding: 4px 10px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border-light);
+  color: var(--text-muted);
+  font-size: var(--type-caption);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: var(--tracking-label);
+  transition: all var(--transition-fast);
+}
+
+.btn-clear-session:hover:not(:disabled) {
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+}
+
+.btn-clear-session.confirm,
+.btn-clear-session.error {
+  color: var(--error);
+  border-color: var(--error);
+  background: var(--error-subtle);
+}
+
+.btn-clear-session:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.btn-clear-session:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 .message-list {

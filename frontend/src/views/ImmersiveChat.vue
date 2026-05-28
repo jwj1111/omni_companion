@@ -153,7 +153,7 @@ async function startSession() {
 
   realtimeService = new RealtimeService()
   micRecorder = new MicRecorder()
-  audioPlayer = new AudioPlayer()
+  audioPlayer = new AudioPlayer({ prebufferMs: 220 })
   audioPlayer.init()
 
   // 连接 WebSocket（等收到 connected 事件后再启动麦克风）

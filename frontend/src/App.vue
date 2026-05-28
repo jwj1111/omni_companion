@@ -115,20 +115,20 @@ provide('screenMonitor', screenMonitorRef)
 }
 
 .app-main {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(380px, 34vw, 520px);
   flex: 1;
   overflow: hidden;
 }
 
 .panel-left {
-  flex: 3;
+  min-width: 0;
   border-right: 1px solid var(--border);
   background: var(--bg-deepest);
 }
 
 .panel-right {
-  flex: 2;
-  min-width: 340px;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   background: var(--bg-panel);

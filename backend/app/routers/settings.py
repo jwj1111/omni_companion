@@ -66,22 +66,31 @@ async def get_all_settings(cm=Depends(get_config_manager)):
 
 @router.put("/update")
 async def update_settings(req: UpdateSettingsRequest, cm=Depends(get_config_manager)):
-    """更新 settings.yaml"""
+    """应用 settings 运行期微调"""
     if req.settings:
         cm.save_settings(req.settings)
         reset_services()
     return {"status": "ok"}
 
 
+@router.post("/reset-runtime")
+async def reset_runtime_settings(cm=Depends(get_config_manager)):
+    """清除运行期微调，恢复默认配置"""
+    cm.reset_runtime_overrides()
+    reset_services()
+    return {"status": "ok"}
+
+
 @router.put("/env")
 async def update_env(req: UpdateEnvRequest, cm=Depends(get_config_manager)):
-    """更新 .env 中的某个 key"""
+    """更新环境变量；API Key 持久化，区域为运行期微调"""
     allowed_keys = ["DASHSCOPE_API_KEY", "DASHSCOPE_API_KEY_REALTIME", "API_REGION"]
     if req.key not in allowed_keys:
         raise HTTPException(status_code=400, detail=f"不允许修改的 key: {req.key}")
     cm.save_env_key(req.key, req.value)
     reset_services()
     return {"status": "ok"}
+
 
 
 @router.get("/personas")
@@ -102,13 +111,14 @@ async def get_persona(persona_id: str, cm=Depends(get_config_manager)):
 
 @router.put("/persona/{persona_id}")
 async def update_persona(persona_id: str, data: PersonaData, cm=Depends(get_config_manager)):
-    """更新/创建角色配置"""
+    """应用角色运行期微调"""
     persona_dict = data.model_dump()
     # 确保 role_id 一致
     persona_dict["role_id"] = persona_id
     cm.save_persona(persona_id, persona_dict)
     reset_services()
     return {"status": "ok"}
+
 
 
 @router.delete("/persona/{persona_id}")
@@ -129,9 +139,11 @@ async def get_rules(cm=Depends(get_config_manager)):
 
 @router.put("/rules")
 async def update_rules(req: UpdateRulesRequest, cm=Depends(get_config_manager)):
-    """更新行为规范 prompt"""
+    """应用行为规范运行期微调"""
     cm.save_interaction_rules(req.content)
+    reset_services()
     return {"status": "ok"}
+
 
 
 @router.get("/voices")

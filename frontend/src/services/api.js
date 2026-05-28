@@ -66,8 +66,17 @@ export async function getSettings() {
 }
 
 /**
+ * 恢复默认运行期设置
+ */
+export async function resetRuntimeSettings() {
+  const resp = await fetch(`${BASE_URL}/api/settings/reset-runtime`, { method: 'POST' })
+  return resp.json()
+}
+
+/**
  * 获取音色列表
  */
+
 export async function getVoices() {
   const resp = await fetch(`${BASE_URL}/api/settings/voices`)
   return resp.json()

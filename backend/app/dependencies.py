@@ -79,9 +79,10 @@ def get_screen_cache() -> ScreenCaptureCache:
 
 # ==================== 重置（用于设置更新后重新初始化） ====================
 
-def reset_services():
-    """重置所有服务实例（设置变更后调用）"""
+def reset_services(clear_config: bool = False):
+    """重置模型服务实例；默认保留运行期配置微调。"""
     global _chat_service, _realtime_service
     _chat_service = None
     _realtime_service = None
-    get_config_manager.cache_clear()
+    if clear_config:
+        get_config_manager.cache_clear()

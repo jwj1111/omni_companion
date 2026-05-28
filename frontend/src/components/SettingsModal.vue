@@ -112,7 +112,7 @@
               class="rules-textarea"
               placeholder="定义 AI 的性格、说话方式和行为边界..."
             ></textarea>
-            <p class="hint">定义 AI 的说话方式和行为边界，保存后下次对话生效</p>
+            <p class="hint">定义 AI 的说话方式和行为边界，应用后本次会话生效，刷新后恢复默认值</p>
           </div>
         </div>
       </section>
@@ -245,7 +245,7 @@ async function save() {
     // 4. 保存行为规范 prompt
     await updateRules(f.interactionRules)
 
-    showToast('已保存，下次对话生效')
+    showToast('已应用，本次会话生效；刷新后恢复默认值')
   } catch (e) {
     showToast('保存失败，请检查网络后重试', 'error')
   } finally {

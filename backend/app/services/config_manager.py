@@ -23,39 +23,46 @@ class ConfigManager:
         self.personas_dir = project_root / "config" / "personas"
         self.prompts_dir = project_root / "prompts"
 
+        # 运行期微调只保存在内存中；前端刷新会主动重置，文件中的默认值保持权威
+        self._env_override: dict = {}
+        self._settings_override: dict = {}
+        self._persona_overrides: dict[str, dict] = {}
+        self._interaction_rules_override: Optional[str] = None
+
         # 加载 .env
         load_dotenv(self.env_path)
 
     # ==================== 加载 ====================
 
     def load_env(self) -> dict:
-        """加载 .env 中的环境变量（脱敏返回）"""
+        """加载 .env 和运行期环境变量覆盖。"""
         api_key = os.getenv("DASHSCOPE_API_KEY", "")
         api_key_realtime = os.getenv("DASHSCOPE_API_KEY_REALTIME", "")
-        region = os.getenv("API_REGION", "beijing")
-        return {
+        env = {
             "api_key": api_key,
             "api_key_realtime": api_key_realtime or api_key,  # 默认共用同一个 key
-            "region": region,
+            "region": os.getenv("API_REGION", "beijing"),
         }
+        return self._deep_merge(env, self._env_override)
 
     def load_settings(self) -> dict:
-        """加载 settings.yaml"""
-        if not self.settings_path.exists():
-            return self._default_settings()
-        with open(self.settings_path, "r", encoding="utf-8") as f:
-            data = yaml.safe_load(f) or {}
-        # 合并默认值
+        """加载默认 settings，并叠加本次运行期微调。"""
         defaults = self._default_settings()
-        return self._deep_merge(defaults, data)
+        if self.settings_path.exists():
+            with open(self.settings_path, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f) or {}
+            defaults = self._deep_merge(defaults, data)
+        return self._deep_merge(defaults, self._settings_override)
 
     def load_persona(self, persona_id: str) -> dict:
-        """加载指定角色的 persona 配置"""
+        """加载指定角色的 persona 配置，并叠加本次运行期微调。"""
         persona_path = self.personas_dir / f"{persona_id}.yaml"
         if not persona_path.exists():
             raise FileNotFoundError(f"角色配置不存在: {persona_id}")
         with open(persona_path, "r", encoding="utf-8") as f:
-            return yaml.safe_load(f) or {}
+            data = yaml.safe_load(f) or {}
+        override = self._persona_overrides.get(persona_id, {})
+        return self._deep_merge(data, override)
 
     def load_active_persona(self) -> dict:
         """加载当前激活角色"""
@@ -64,12 +71,15 @@ class ConfigManager:
         return self.load_persona(persona_id)
 
     def load_interaction_rules(self) -> str:
-        """加载通用行为规范"""
+        """加载通用行为规范，并叠加本次运行期微调。"""
+        if self._interaction_rules_override is not None:
+            return self._interaction_rules_override
         rules_path = self.prompts_dir / "interaction_rules.txt"
         if not rules_path.exists():
             return ""
         with open(rules_path, "r", encoding="utf-8") as f:
             return f.read()
+
 
     def build_system_prompt(self, persona_id: Optional[str] = None) -> str:
         """
@@ -146,20 +156,20 @@ class ConfigManager:
     # ==================== 保存 ====================
 
     def save_settings(self, data: dict):
-        """保存 settings.yaml"""
-        self.settings_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(self.settings_path, "w", encoding="utf-8") as f:
-            yaml.dump(data, f, allow_unicode=True, default_flow_style=False)
+        """应用 settings 运行期微调，不写回默认配置文件。"""
+        self._settings_override = self._deep_merge(self._settings_override, data)
 
     def save_persona(self, persona_id: str, data: dict):
-        """保存角色配置"""
-        self.personas_dir.mkdir(parents=True, exist_ok=True)
-        persona_path = self.personas_dir / f"{persona_id}.yaml"
-        with open(persona_path, "w", encoding="utf-8") as f:
-            yaml.dump(data, f, allow_unicode=True, default_flow_style=False)
+        """应用角色运行期微调，不写回默认角色文件。"""
+        current = self._persona_overrides.get(persona_id, {})
+        self._persona_overrides[persona_id] = self._deep_merge(current, data)
 
     def save_env_key(self, key: str, value: str):
-        """更新 .env 中的某个 key"""
+        """更新环境变量；API Key 持久化，区域只作为本次运行期微调。"""
+        if key == "API_REGION":
+            self._env_override["region"] = value
+            return
+
         if not self.env_path.exists():
             self.env_path.touch()
         set_key(str(self.env_path), key, value)
@@ -167,11 +177,16 @@ class ConfigManager:
         load_dotenv(self.env_path, override=True)
 
     def save_interaction_rules(self, content: str):
-        """保存通用行为规范"""
-        self.prompts_dir.mkdir(parents=True, exist_ok=True)
-        rules_path = self.prompts_dir / "interaction_rules.txt"
-        with open(rules_path, "w", encoding="utf-8") as f:
-            f.write(content)
+        """应用行为规范运行期微调，不写回默认 prompt 文件。"""
+        self._interaction_rules_override = content
+
+    def reset_runtime_overrides(self):
+        """清除所有运行期微调，恢复文件中的默认配置。"""
+        self._env_override.clear()
+        self._settings_override.clear()
+        self._persona_overrides.clear()
+        self._interaction_rules_override = None
+
 
     # ==================== 查询 ====================
 

@@ -54,6 +54,7 @@ import { ref, nextTick, onBeforeUnmount, inject } from 'vue'
 import ChatModeTabs from '@/components/ChatModeTabs.vue'
 import { RealtimeService } from '@/services/realtime'
 import { MicRecorder, AudioPlayer, stopAllAudio } from '@/services/audio'
+import { getSettings } from '@/services/api'
 
 const screenMonitor = inject('screenMonitor')
 
@@ -87,10 +88,17 @@ function toggleSession() {
  * 定时器启动后常驻，内部动态检测屏幕监控状态和 screenshotPushActive 标志
  * 支持中途开启/关闭屏幕监控
  */
-function startScreenshotPush() {
+async function startScreenshotPush() {
   if (screenshotInterval) return
 
-  const intervalMs = 1000
+  let intervalMs = 1000
+  try {
+    const settingsResp = await getSettings()
+    intervalMs = settingsResp?.settings?.screen_capture?.interval_ms || 1000
+  } catch (e) {
+    intervalMs = 1000
+  }
+
   screenshotInterval = setInterval(() => {
     if (!screenshotPushActive) return
     if (!screenMonitor.value?.isCapturing) return
@@ -114,7 +122,7 @@ async function startMicAndScreenshot() {
     statusText.value = '聆听中...'
 
     // 启动截屏推送定时器（实际推送由 screenshotPushActive 门控）
-    startScreenshotPush()
+    await startScreenshotPush()
 
     // 音量检测
     volumeInterval = setInterval(() => {
@@ -137,6 +145,7 @@ async function startSession() {
   realtimeService = new RealtimeService()
   micRecorder = new MicRecorder()
   audioPlayer = new AudioPlayer()
+  audioPlayer.init()
 
   // 连接 WebSocket（等收到 connected 事件后再启动麦克风）
   realtimeService.connect(handleEvent)

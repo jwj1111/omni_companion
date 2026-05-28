@@ -72,6 +72,7 @@
 import { ref, computed, nextTick, watch, inject } from 'vue'
 import { useChatStore } from '@/stores/chat'
 import { playPcmAudio } from '@/services/audio'
+import { getSettings } from '@/services/api'
 import ChatModeTabs from '@/components/ChatModeTabs.vue'
 
 const chatStore = useChatStore()
@@ -120,7 +121,14 @@ async function handleSend() {
   attachedImage.value = null
   resetTextareaHeight()
 
-  await chatStore.send(content, true)
+  let outputAudio = true
+  try {
+    const settingsResp = await getSettings()
+    outputAudio = settingsResp?.settings?.output?.modalities?.includes('audio') ?? true
+  } catch (e) {
+    outputAudio = true
+  }
+  await chatStore.send(content, outputAudio)
   scrollToBottom()
 }
 

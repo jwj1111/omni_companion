@@ -4,8 +4,10 @@ FastAPI 应用，提供非沉浸模式 HTTP API 和沉浸模式 WebSocket 接口
 """
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
 
 from app.routers import chat, realtime, settings
 from app.dependencies import get_config_manager, get_screen_cache
@@ -27,7 +29,13 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="游戏AI陪聊", version="0.1.0", lifespan=lifespan)
 
+
+class ScreenshotRequest(BaseModel):
+    image_b64: str
+
+
 # CORS（允许前端访问）
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -51,11 +59,12 @@ async def health_check():
 
 
 @app.post("/api/screenshot")
-async def upload_screenshot(image_b64: str):
+async def upload_screenshot(req: ScreenshotRequest):
     """
     接收前端上传的截屏（base64 JPEG）
     存入全局截屏缓存池，供沉浸模式使用
     """
     cache = get_screen_cache()
-    cache.add_frame(image_b64)
+    cache.add_frame(req.image_b64)
     return {"status": "ok", "frame_count": cache.get_frame_count()}
+

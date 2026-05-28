@@ -35,14 +35,18 @@
 import { ref, provide, onMounted } from 'vue'
 import ScreenMonitor from '@/components/ScreenMonitor.vue'
 import SettingsModal from '@/components/SettingsModal.vue'
-import { clearChatHistory } from '@/services/api'
+import { clearChatHistory, resetRuntimeSettings } from '@/services/api'
 
 const showSettings = ref(false)
 const screenMonitorRef = ref(null)
 
-// 每次前端加载（刷新）= 新对话
-onMounted(() => {
-  clearChatHistory()
+// 每次前端加载（刷新）= 恢复默认设置 + 新对话
+onMounted(async () => {
+  try {
+    await resetRuntimeSettings()
+  } finally {
+    clearChatHistory()
+  }
 })
 
 // 暴露给子组件（NonImmersiveChat / ImmersiveChat）

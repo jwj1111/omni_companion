@@ -93,12 +93,13 @@ class OmniChatService:
                         audio_data += audio_chunk
                         yield {"type": "audio", "data": audio_chunk}
 
-            # 将 assistant 回复存入历史（只存文本，文档要求）
+            # 将 assistant 回复存入历史（文档要求 Assistant Message 只能包含文本）
             if assistant_text:
                 self.messages.append({
                     "role": "assistant",
-                    "content": [{"type": "text", "text": assistant_text}]
+                    "content": assistant_text,
                 })
+
 
             # 返回 done 事件，附带 usage 信息
             done_data = {}

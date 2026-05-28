@@ -72,7 +72,14 @@ let audioPlayer = null
 let volumeInterval = null
 let screenshotInterval = null
 let screenshotPushActive = false  // 是否允许推送截图（仅用户说话时为 true）
-let currentAssistantText = ''
+
+// 当前语音轮次的转写状态。
+// Realtime 事件可能出现“助手文本先于用户最终转写到达”，所以不能靠消息列表最后一项判断归属。
+let waitingForUserFinal = false
+let currentUserTranscript = null
+let currentAssistantTranscript = null
+let pendingAssistantText = ''
+let pendingAssistantFinalText = ''
 
 function toggleSession() {
   if (isConnecting.value) return  // 连接中，忽略点击
@@ -177,24 +184,162 @@ function stopSession() {
   isActive.value = false
   volumePercent.value = 0
   statusText.value = ''
+  finalizeStreamingTranscript()
+  resetTurnTranscriptState()
 }
 
 /**
- * 结束当前未完成的助手转写条目
- * 打断时调用：如果内容太短（碎片），直接移除；否则标记为完成
+ * 创建一条转写消息，并返回可持续更新的引用。
+ */
+function createTranscript(role, text = '', streaming = false) {
+  const item = { role, text, streaming }
+  transcripts.value.push(item)
+  scrollToBottom()
+  return item
+}
+
+function removeTranscript(item) {
+  const index = transcripts.value.indexOf(item)
+  if (index >= 0) {
+    transcripts.value.splice(index, 1)
+  }
+}
+
+function resetTurnTranscriptState() {
+  waitingForUserFinal = false
+  currentUserTranscript = null
+  currentAssistantTranscript = null
+  pendingAssistantText = ''
+  pendingAssistantFinalText = ''
+}
+
+function startUserTurn() {
+  finalizeStreamingTranscript()
+  resetTurnTranscriptState()
+  waitingForUserFinal = true
+}
+
+function updateUserTranscript(text, final) {
+  const normalizedText = text || ''
+
+  if (!currentUserTranscript && !normalizedText) {
+    if (final) {
+      waitingForUserFinal = false
+      flushPendingAssistantTranscript()
+    }
+    return
+  }
+
+  if (!currentUserTranscript) {
+    currentUserTranscript = createTranscript('user', normalizedText, !final)
+  } else {
+    currentUserTranscript.text = normalizedText
+    currentUserTranscript.streaming = !final
+    scrollToBottom()
+  }
+
+  if (final) {
+    waitingForUserFinal = false
+    flushPendingAssistantTranscript()
+  }
+}
+
+function ensureUserTranscriptBeforeAssistant() {
+  if (!currentUserTranscript) {
+    currentUserTranscript = createTranscript('user', '正在识别...', true)
+  }
+}
+
+function appendAssistantTranscript(deltaText) {
+  if (!deltaText) return
+  if (!currentAssistantTranscript) {
+    currentAssistantTranscript = createTranscript('assistant', '', true)
+  }
+  currentAssistantTranscript.text += deltaText
+  currentAssistantTranscript.streaming = true
+  scrollToBottom()
+}
+
+function setAssistantTranscript(text, streaming) {
+  if (!text) return
+  if (!currentAssistantTranscript) {
+    currentAssistantTranscript = createTranscript('assistant', text, streaming)
+  } else {
+    currentAssistantTranscript.text = text
+    currentAssistantTranscript.streaming = streaming
+    scrollToBottom()
+  }
+}
+
+function flushPendingAssistantTranscript() {
+  if (!pendingAssistantText && !pendingAssistantFinalText) return
+
+  if (waitingForUserFinal) {
+    ensureUserTranscriptBeforeAssistant()
+  }
+
+  if (pendingAssistantFinalText) {
+    setAssistantTranscript(pendingAssistantFinalText, false)
+  } else {
+    appendAssistantTranscript(pendingAssistantText)
+  }
+
+  pendingAssistantText = ''
+  pendingAssistantFinalText = ''
+}
+
+function handleUserTranscript(event) {
+  updateUserTranscript(event.text || '', event.final)
+}
+
+function handleAssistantTranscript(event) {
+  const text = event.text || ''
+
+  if (event.final) {
+    pendingAssistantFinalText = text || pendingAssistantText
+    if (!waitingForUserFinal) {
+      flushPendingAssistantTranscript()
+    }
+    return
+  }
+
+  if (waitingForUserFinal) {
+    pendingAssistantText += text
+    return
+  }
+
+  appendAssistantTranscript(text)
+}
+
+/**
+ * 结束当前未完成的助手转写条目。
+ * 打断时调用：如果内容太短（碎片），直接移除；否则标记为完成。
  */
 function finalizeStreamingTranscript() {
-  if (!currentAssistantText) return
-  const last = transcripts.value[transcripts.value.length - 1]
-  if (last && last.role === 'assistant' && last.streaming) {
-    if (currentAssistantText.length <= 2) {
-      // 碎片（如"还是"），直接移除
-      transcripts.value.pop()
+  if (currentAssistantTranscript?.streaming) {
+    const text = currentAssistantTranscript.text || ''
+    if (text.trim().length <= 2) {
+      removeTranscript(currentAssistantTranscript)
     } else {
-      last.streaming = false
+      currentAssistantTranscript.streaming = false
     }
   }
-  currentAssistantText = ''
+  currentAssistantTranscript = null
+  pendingAssistantText = ''
+  pendingAssistantFinalText = ''
+}
+
+function completeAssistantResponse() {
+  if (waitingForUserFinal && (pendingAssistantText || pendingAssistantFinalText)) {
+    ensureUserTranscriptBeforeAssistant()
+  }
+  waitingForUserFinal = false
+  flushPendingAssistantTranscript()
+  if (currentAssistantTranscript) {
+    currentAssistantTranscript.streaming = false
+  }
+  pendingAssistantText = ''
+  pendingAssistantFinalText = ''
 }
 
 function handleEvent(event) {
@@ -204,33 +349,9 @@ function handleEvent(event) {
     if (audioPlayer) audioPlayer.write(event.data)
   } else if (type === 'transcript') {
     if (event.role === 'user') {
-      if (event.final) {
-        transcripts.value.push({ role: 'user', text: event.text })
-        scrollToBottom()
-      }
+      handleUserTranscript(event)
     } else if (event.role === 'assistant') {
-      if (event.final) {
-        // 替换或添加最终文本
-        const last = transcripts.value[transcripts.value.length - 1]
-        if (last && last.role === 'assistant' && last.streaming) {
-          last.text = event.text
-          last.streaming = false
-        } else {
-          transcripts.value.push({ role: 'assistant', text: event.text })
-        }
-        currentAssistantText = ''
-        scrollToBottom()
-      } else {
-        // 流式增量
-        currentAssistantText += event.text
-        const last = transcripts.value[transcripts.value.length - 1]
-        if (last && last.role === 'assistant' && last.streaming) {
-          last.text = currentAssistantText
-        } else {
-          transcripts.value.push({ role: 'assistant', text: currentAssistantText, streaming: true })
-        }
-        scrollToBottom()
-      }
+      handleAssistantTranscript(event)
     }
   } else if (type === 'status') {
     if (event.event === 'connected') {
@@ -262,16 +383,18 @@ function handleEvent(event) {
         clearInterval(volumeInterval)
         volumeInterval = null
       }
+      finalizeStreamingTranscript()
+      resetTurnTranscriptState()
     } else if (event.event === 'input_audio_buffer.speech_started') {
       statusText.value = '说话中...'
       screenshotPushActive = true  // 用户开始说话，允许推截图
       if (audioPlayer) audioPlayer.flush()  // 打断：清空播放缓冲（不销毁）
-      // 打断时清理未完成的助手转写
-      finalizeStreamingTranscript()
+      startUserTurn()
     } else if (event.event === 'input_audio_buffer.speech_stopped') {
       statusText.value = '思考中...'
       screenshotPushActive = false  // 用户停止说话，暂停推截图（防止 image before audio）
     } else if (event.event === 'response.done') {
+      completeAssistantResponse()
       statusText.value = '聆听中...'
     }
   } else if (type === 'error') {

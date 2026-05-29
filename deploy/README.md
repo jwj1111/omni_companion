@@ -29,9 +29,11 @@ docker compose up -d --build
 
 默认访问：
 
-- 前端：http://localhost:8080
-- 健康检查：http://localhost:8080/health
-- API 文档：http://localhost:8080/docs
+- 前端：http://服务器IP 或 http://localhost
+- 健康检查：http://服务器IP/health
+- API 文档：http://服务器IP/docs
+
+如果宿主机 80 端口已被占用，可把 `docker-compose.yml` 中的 `80:80` 改回 `8080:80`，然后通过 `http://服务器IP:8080` 访问。
 
 ## 3. 查看日志
 

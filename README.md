@@ -97,9 +97,11 @@ docker compose up -d --build
 
 默认访问：
 
-- 前端：http://localhost:8080
-- 健康检查：http://localhost:8080/health
-- API 文档：http://localhost:8080/docs
+- 前端：http://服务器IP 或 http://localhost
+- 健康检查：http://服务器IP/health
+- API 文档：http://服务器IP/docs
+
+默认 compose 映射宿主机 80 端口；如果 80 已被占用，可改成 `8080:80` 后使用 `http://服务器IP:8080`。
 
 更多说明见：`deploy/README.md`。
 

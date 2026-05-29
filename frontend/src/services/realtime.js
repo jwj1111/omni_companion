@@ -3,7 +3,12 @@
  */
 import { getSessionId } from './session'
 
-const WS_URL = 'ws://localhost:8000/api/realtime/ws'
+function getDefaultWsUrl() {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  return `${protocol}//${window.location.host}/api/realtime/ws`
+}
+
+const WS_URL = (import.meta.env.VITE_WS_BASE_URL || getDefaultWsUrl()).replace(/\/$/, '')
 
 export class RealtimeService {
   constructor() {

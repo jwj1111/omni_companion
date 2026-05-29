@@ -116,9 +116,12 @@ defineExpose({ captureFrame, isCapturing })
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .monitor-header {
+  flex-shrink: 0;
   padding: 8px 16px;
   display: flex;
   align-items: center;
@@ -193,8 +196,10 @@ defineExpose({ captureFrame, isCapturing })
 }
 
 .monitor-preview video {
+  display: block;
   width: 100%;
   height: 100%;
+  min-height: 0;
   object-fit: contain;
 }
 

@@ -66,6 +66,7 @@ provide('screenMonitor', screenMonitorRef)
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-shrink: 0;
   padding: 0 20px;
   height: 48px;
   background: var(--bg-panel);

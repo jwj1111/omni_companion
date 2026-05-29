@@ -438,6 +438,7 @@ onBeforeUnmount(() => {
 
 /* 输入区域 */
 .input-area {
+  flex-shrink: 0;
   padding: 10px 16px 12px;
   border-top: 1px solid var(--border);
   background: var(--bg-deepest);

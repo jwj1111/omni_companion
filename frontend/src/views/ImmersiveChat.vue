@@ -430,10 +430,13 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .transcript-area {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 20px 16px;
   display: flex;
@@ -518,6 +521,7 @@ onBeforeUnmount(() => {
 
 /* 控制区域 */
 .control-area {
+  flex-shrink: 0;
   padding: 24px 20px 20px;
   display: flex;
   flex-direction: column;

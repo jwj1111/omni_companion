@@ -22,7 +22,7 @@
           <div class="form-group">
             <label for="settings-api-key">API Key</label>
             <input id="settings-api-key" type="password" v-model="form.apiKey" placeholder="sk-xxx" autocomplete="off" />
-            <p class="hint">阿里云百炼 API Key</p>
+            <p class="hint">Qwen Omni API Key</p>
           </div>
           <div class="form-group">
             <label for="settings-region">区域</label>

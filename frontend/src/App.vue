@@ -59,6 +59,9 @@ provide('screenMonitor', screenMonitorRef)
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
   background: var(--bg-deepest);
 }
 
@@ -118,18 +121,26 @@ provide('screenMonitor', screenMonitorRef)
 .app-main {
   display: grid;
   grid-template-columns: minmax(0, 1fr) clamp(380px, 34vw, 520px);
-  flex: 1;
+  flex: 1 1 0;
+  min-height: 0;
   overflow: hidden;
 }
 
 .panel-left {
   min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  contain: layout paint size;
   border-right: 1px solid var(--border);
   background: var(--bg-deepest);
 }
 
 .panel-right {
   min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   background: var(--bg-panel);

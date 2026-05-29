@@ -270,6 +270,8 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .btn-clear-session {
@@ -306,7 +308,8 @@ onBeforeUnmount(() => {
 }
 
 .message-list {
-  flex: 1;
+  flex: 1 1 0;
+  min-height: 0;
   overflow-y: auto;
   padding: 20px 16px;
   display: flex;
@@ -328,6 +331,7 @@ onBeforeUnmount(() => {
   display: flex;
   gap: 10px;
   max-width: 88%;
+  min-width: 0;
   animation: msg-in 0.2s ease-out;
 }
 
@@ -367,11 +371,13 @@ onBeforeUnmount(() => {
 }
 
 .message-bubble {
+  min-width: 0;
   padding: 10px 14px;
   font-size: var(--type-chat);
   line-height: var(--leading-chat);
   font-weight: 400;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
   word-break: break-word;
 }
 
@@ -481,6 +487,7 @@ onBeforeUnmount(() => {
 
 .input-row textarea {
   flex: 1;
+  min-width: 0;
   min-height: 36px;
   max-height: 120px;
   padding: 8px 12px;

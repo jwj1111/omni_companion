@@ -9,7 +9,6 @@
         type="button"
         class="btn-capture"
         :disabled="isRequesting"
-
         @click="isCapturing ? stopCapture() : startCapture()"
         :aria-label="isCapturing ? '停止屏幕采集' : '开始屏幕采集'"
       >
@@ -47,27 +46,37 @@ const videoRef = ref(null)
 const canvasRef = ref(null)
 
 let mediaStream = null
-let frameInterval = null
 
 async function startCapture() {
   errorMsg.value = ''
+  if (!navigator.mediaDevices?.getDisplayMedia) {
+    errorMsg.value = '当前浏览器或访问方式不支持屏幕共享'
+    return
+  }
+
   isRequesting.value = true
   try {
-    mediaStream = await navigator.mediaDevices.getDisplayMedia({
+    const stream = await navigator.mediaDevices.getDisplayMedia({
       video: true,
       audio: false
     })
+
+    if (!videoRef.value) {
+      stream.getTracks().forEach(track => track.stop())
+      return
+    }
+
+    mediaStream = stream
     videoRef.value.srcObject = mediaStream
     isCapturing.value = true
 
-    mediaStream.getVideoTracks()[0].addEventListener('ended', () => {
-      stopCapture()
-    })
+    const [videoTrack] = mediaStream.getVideoTracks()
+    videoTrack?.addEventListener('ended', stopCapture, { once: true })
   } catch (err) {
-    if (err.name === 'NotAllowedError') {
+    if (err?.name === 'NotAllowedError') {
       errorMsg.value = '屏幕共享权限被拒绝'
     } else {
-      errorMsg.value = `采集失败: ${err.message}`
+      errorMsg.value = `采集失败: ${err?.message || '未知错误'}`
     }
   } finally {
     isRequesting.value = false
@@ -79,10 +88,7 @@ function stopCapture() {
     mediaStream.getTracks().forEach(track => track.stop())
     mediaStream = null
   }
-  if (frameInterval) {
-    clearInterval(frameInterval)
-    frameInterval = null
-  }
+
   if (videoRef.value) {
     videoRef.value.srcObject = null
   }
@@ -95,11 +101,15 @@ function stopCapture() {
 function captureFrame() {
   if (!videoRef.value || !canvasRef.value) return null
   const video = videoRef.value
+  if (!video.videoWidth || !video.videoHeight || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return null
+
   const canvas = canvasRef.value
   canvas.width = video.videoWidth
   canvas.height = video.videoHeight
   const ctx = canvas.getContext('2d')
-  ctx.drawImage(video, 0, 0)
+  if (!ctx) return null
+
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
   const dataUrl = canvas.toDataURL('image/jpeg', 0.7)
   return dataUrl.split(',')[1]
 }
@@ -115,9 +125,12 @@ defineExpose({ captureFrame, isCapturing })
 .screen-monitor-container {
   display: flex;
   flex-direction: column;
+  width: 100%;
   height: 100%;
+  min-width: 0;
   min-height: 0;
   overflow: hidden;
+  contain: layout paint size;
 }
 
 .monitor-header {
@@ -142,7 +155,6 @@ defineExpose({ captureFrame, isCapturing })
 }
 
 .dot {
-
   width: 6px;
   height: 6px;
   border-radius: 50%;
@@ -169,7 +181,6 @@ defineExpose({ captureFrame, isCapturing })
 }
 
 .btn-capture:hover:not(:disabled) {
-
   background: var(--accent-subtle);
   border-color: var(--accent);
   color: var(--accent-light);
@@ -186,28 +197,36 @@ defineExpose({ captureFrame, isCapturing })
 
 
 .monitor-preview {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  display: block;
   background: var(--bg-deepest);
   overflow: hidden;
   position: relative;
+  contain: layout paint size;
 }
 
 .monitor-preview video {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;
-  min-height: 0;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
 }
 
 .placeholder {
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 16px;
+  padding: 16px;
   color: var(--text-muted);
   font-size: var(--type-label);
   opacity: 0.7;
@@ -217,10 +236,10 @@ defineExpose({ captureFrame, isCapturing })
   max-width: 200px;
   text-align: center;
   line-height: var(--leading-body);
+  overflow-wrap: anywhere;
 }
 
 .placeholder .error-text {
-
   color: var(--error);
   opacity: 1;
 }

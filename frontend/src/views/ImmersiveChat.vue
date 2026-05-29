@@ -435,7 +435,7 @@ onBeforeUnmount(() => {
 }
 
 .transcript-area {
-  flex: 1;
+  flex: 1 1 0;
   min-height: 0;
   overflow-y: auto;
   padding: 20px 16px;
@@ -485,10 +485,12 @@ onBeforeUnmount(() => {
 
 .transcript-text {
   color: var(--text-primary);
+  overflow-wrap: anywhere;
 }
 
 /* 状态指示 */
 .status-indicator {
+  flex-shrink: 0;
   padding: 6px 16px;
   display: flex;
   align-items: center;
@@ -513,6 +515,10 @@ onBeforeUnmount(() => {
 }
 
 .status-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: var(--type-caption);
   line-height: 1;
   color: var(--text-muted);
